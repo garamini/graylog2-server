@@ -33,7 +33,7 @@ const SessionStore = Reflux.createStore({
     SessionActions.login.promise(promise);
   },
   logout(sessionId) {
-    const promise = new Builder('DELETE', URLUtils.qualifyUrl(this.sourceUrl + '/' + sessionId))
+    const promise = new Builder('DELETE', URLUtils.qualifyUrl(`${this.sourceUrl}/${sessionId}`))
       .authenticated()
       .build()
       .then((resp) => {
@@ -53,13 +53,16 @@ const SessionStore = Reflux.createStore({
     this._validateSession(sessionId)
       .then((response) => {
         if (response.is_valid) {
-          SessionActions.login.completed({
+          return SessionActions.login.completed({
             sessionId: sessionId || response.session_id,
             username: username || response.username,
           });
-        } else {
+        }
+        if (sessionId && username) {
           this._removeSession();
         }
+
+        return response;
       })
       .finally(() => {
         this.validatingSession = false;

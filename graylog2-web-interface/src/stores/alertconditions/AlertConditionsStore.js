@@ -19,11 +19,12 @@ const AlertConditionsStore = Reflux.createStore({
   getInitialState() {
     return {
       types: this.types,
+      allAlertConditions: this.allAlertConditions,
     };
   },
 
   available() {
-    const url = URLUtils.qualifyUrl(ApiRoutes.StreamAlertsApiController.available().url);
+    const url = URLUtils.qualifyUrl(ApiRoutes.AlertConditionsApiController.available().url);
     const promise = fetch('GET', url).then((response) => {
       this.types = response;
       this.trigger(this.getInitialState());
@@ -41,11 +42,29 @@ const AlertConditionsStore = Reflux.createStore({
 
     const url = URLUtils.qualifyUrl(ApiRoutes.StreamAlertsApiController.delete(streamId, alertConditionId).url);
     const promise = fetch('DELETE', url).then(() => {
-      AlertConditionsActions.list(streamId);
+      AlertConditionsActions.listAll();
+      UserNotification.success('Condition deleted successfully');
     }, failCallback);
     AlertConditionsActions.delete.promise(promise);
     return promise;
   },
+
+  listAll() {
+    const url = URLUtils.qualifyUrl(ApiRoutes.AlertConditionsApiController.list().url);
+    const promise = fetch('GET', url).then(
+      (response) => {
+        this.allAlertConditions = response.conditions;
+        this.trigger({ allAlertConditions: this.allAlertConditions });
+        return this.allAlertConditions;
+      },
+      (error) => {
+        UserNotification.error(`Fetching alert conditions failed with status: ${error}`,
+          'Could not get alert conditions');
+      },
+    );
+    AlertConditionsActions.listAll.promise(promise);
+  },
+
   list(streamId) {
     const failCallback = (error) => {
       UserNotification.error(`Fetching Alert Conditions failed with status: ${error}`,
@@ -73,8 +92,9 @@ const AlertConditionsStore = Reflux.createStore({
     };
 
     const url = URLUtils.qualifyUrl(ApiRoutes.StreamAlertsApiController.create(streamId).url);
-    const promise = fetch('POST', url, alertCondition).then(() => {
-      AlertConditionsActions.list(streamId);
+    const promise = fetch('POST', url, alertCondition).then((response) => {
+      UserNotification.success('Condition created successfully');
+      return response.alert_condition_id;
     }, failCallback);
 
     AlertConditionsActions.save.promise(promise);
@@ -87,12 +107,32 @@ const AlertConditionsStore = Reflux.createStore({
     };
 
     const url = URLUtils.qualifyUrl(ApiRoutes.StreamAlertsApiController.update(streamId, alertConditionId).url);
-    const promise = fetch('PUT', url, request).then(() => {
-      AlertConditionsActions.list(streamId);
+    const promise = fetch('PUT', url, request).then((response) => {
+      UserNotification.success('Condition updated successfully');
+      return response;
     }, failCallback);
 
     AlertConditionsActions.update.promise(promise);
     return promise;
+  },
+  get(streamId, conditionId, failureCallback) {
+    const failCallback = (error) => {
+      UserNotification.error(`Fetching Alert Condition ${conditionId} failed with status: ${error}`,
+        'Could not retrieve Alert Condition');
+    };
+
+    const url = URLUtils.qualifyUrl(ApiRoutes.StreamAlertsApiController.get(streamId, conditionId).url);
+    const promise = fetch('GET', url);
+    promise.then(
+      (response) => {
+        this.trigger({ alertCondition: response });
+        return response;
+      },
+      (error) => {
+        return (typeof failureCallback === 'function' ? failureCallback(error) : failCallback(error));
+      });
+
+    AlertConditionsActions.get.promise(promise);
   },
 });
 

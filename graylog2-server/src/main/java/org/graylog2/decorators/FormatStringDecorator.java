@@ -18,6 +18,7 @@ package org.graylog2.decorators;
 
 import com.floreysoft.jmte.Engine;
 import com.floreysoft.jmte.template.Template;
+import com.floreysoft.jmte.template.VariableDescription;
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.assistedinject.Assisted;
 import org.graylog2.plugin.Message;
@@ -31,7 +32,6 @@ import org.graylog2.rest.resources.search.responses.SearchResponse;
 import javax.inject.Inject;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
@@ -45,7 +45,7 @@ public class FormatStringDecorator implements SearchResponseDecorator {
     private final String targetField;
     private final Template template;
     private final boolean requireAllFields;
-    private final Set<String> usedVariables;
+    private final List<VariableDescription> usedVariables;
 
     public interface Factory extends SearchResponseDecorator.Factory {
         @Override
@@ -93,25 +93,23 @@ public class FormatStringDecorator implements SearchResponseDecorator {
     }
 
     @Inject
-    public FormatStringDecorator(@Assisted Decorator decorator) {
+    public FormatStringDecorator(@Assisted Decorator decorator, Engine templateEngine) {
         final String formatString = (String) requireNonNull(decorator.config().get(CK_FORMAT_STRING),
                                                             CK_FORMAT_STRING + " cannot be null");
         this.targetField = (String) requireNonNull(decorator.config().get(CK_TARGET_FIELD),
                                                    CK_TARGET_FIELD + " cannot be null");
         requireAllFields = (boolean) requireNonNull(decorator.config().get(CK_REQUIRE_ALL_FIELDS),
                                                     CK_REQUIRE_ALL_FIELDS + " cannot be null");
-        template = Engine.createDefaultEngine().getTemplate(formatString);
-        usedVariables = template.getUsedVariables();
+        template = requireNonNull(templateEngine, "templateEngine").getTemplate(formatString);
+        usedVariables = template.getUsedVariableDescriptions();
     }
 
     @Override
     public SearchResponse apply(SearchResponse searchResponse) {
         final List<ResultMessageSummary> summaries = searchResponse.messages().stream()
                 .map(summary -> {
-                    if (requireAllFields) {
-                        if (!usedVariables.stream().allMatch(variable -> summary.message().containsKey(variable))) {
-                            return summary;
-                        }
+                    if (requireAllFields && !usedVariables.stream().allMatch(variable -> summary.message().containsKey(variable.name))) {
+                        return summary;
                     }
                     final String formattedString = template.transform(summary.message(), Locale.ENGLISH);
 

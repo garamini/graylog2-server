@@ -1,4 +1,5 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import Immutable from 'immutable';
 import { Panel, ListGroup, ListGroupItem } from 'react-bootstrap';
 import crossfilter from 'crossfilter';
@@ -6,15 +7,16 @@ import dc from 'dc';
 import d3 from 'd3';
 import deepEqual from 'deep-equal';
 
-const D3Utils = require('../../util/D3Utils');
-const StringUtils = require('../../util/StringUtils');
+import $ from 'jquery';
+global.jQuery = $;
+require('bootstrap/js/tooltip');
+
+import D3Utils from 'util/D3Utils';
+import StringUtils from 'util/StringUtils';
 import NumberUtils from 'util/NumberUtils';
 
 import StoreProvider from 'injection/StoreProvider';
 const SearchStore = StoreProvider.getStore('Search');
-
-require('!script!../../../public/javascripts/jquery-2.1.1.min.js');
-require('!script!../../../public/javascripts/bootstrap.min.js');
 
 const QuickValuesVisualization = React.createClass({
   propTypes: {
@@ -25,6 +27,17 @@ const QuickValuesVisualization = React.createClass({
     horizontal: PropTypes.bool,
     displayAnalysisInformation: PropTypes.bool,
     displayAddToSearchButton: PropTypes.bool,
+    sortOrder: PropTypes.string,
+    dataTableTitle: PropTypes.string,
+    limit: PropTypes.number,
+    dataTableLimit: PropTypes.number,
+  },
+  getDefaultProps() {
+    return {
+      dataTableLimit: 50,
+      dataTableTitle: 'Top values',
+      limit: 5,
+    };
   },
   getInitialState() {
     this.filters = [];
@@ -32,8 +45,9 @@ const QuickValuesVisualization = React.createClass({
     this.shouldUpdateData = true;
     this.dcGroupName = `quickvalue-${this.props.id}`;
     this.quickValuesData = crossfilter();
-    this.dimension = this.quickValuesData.dimension((d) => d.term);
-    this.group = this.dimension.group().reduceSum((d) => d.count);
+    this.dimensionByTerm = this.quickValuesData.dimension(d => d.term);
+    this.dimensionByCount = this.quickValuesData.dimension(d => d.count);
+    this.group = this.dimensionByTerm.group().reduceSum(d => d.count);
 
     return {
       total: undefined,
@@ -56,7 +70,6 @@ const QuickValuesVisualization = React.createClass({
     this._resizeVisualization(nextProps.width, nextProps.height, nextProps.config.show_data_table);
     this._formatProps(nextProps);
   },
-  NUMBER_OF_TOP_VALUES: 5,
   DEFAULT_PIE_CHART_SIZE: 200,
   MARGIN_TOP: 15,
 
@@ -108,33 +121,39 @@ const QuickValuesVisualization = React.createClass({
 
         return `${colourBadge} ${d.term}`;
       },
-      (d) => {
-        return NumberUtils.formatPercentage(d.percentage);
-      },
-      (d) => NumberUtils.formatNumber(d.count),
+      d => NumberUtils.formatPercentage(d.percentage),
+      d => NumberUtils.formatNumber(d.count),
     ];
 
     if (this.props.displayAddToSearchButton) {
-      columns.push((d) => this._getAddToSearchButton(d.term));
+      columns.push(d => this._getAddToSearchButton(d.term));
     }
 
     return columns;
   },
+  _getSortOrder() {
+    switch (this.props.sortOrder) {
+      case 'desc': return d3.descending;
+      case 'asc': return d3.ascending;
+      default: return d3.descending;
+    }
+  },
   _renderDataTable() {
     const tableDomNode = this.refs.table;
+    const { dataTableLimit, limit } = this.props;
 
     this.dataTable = dc.dataTable(tableDomNode, this.dcGroupName);
     this.dataTable
-      .dimension(this.dimension)
+      .dimension(this.dimensionByCount)
       .group((d) => {
-        const topValues = this.group.top(this.NUMBER_OF_TOP_VALUES);
-        const dInTopValues = topValues.some((value) => d.term.localeCompare(value.key) === 0);
-        return dInTopValues ? 'Top values' : 'Others';
+        const topValues = this.group.top(limit);
+        const dInTopValues = topValues.some(value => d.term.localeCompare(value.key) === 0);
+        return dInTopValues ? this.props.dataTableTitle : 'Others';
       })
-      .size(50)
+      .sortBy(d => d.count)
+      .order(this._getSortOrder())
+      .size(dataTableLimit)
       .columns(this._getDataTableColumns())
-      .sortBy((d) => d.count)
-      .order(d3.descending)
       .on('renderlet', (table) => {
         table.selectAll('.dc-table-group').classed('info', true);
         table.selectAll('td.dc-table-column button').on('click', () => {
@@ -151,7 +170,7 @@ const QuickValuesVisualization = React.createClass({
 
     this.pieChart = dc.pieChart(graphDomNode, this.dcGroupName);
     this.pieChart
-      .dimension(this.dimension)
+      .dimension(this.dimensionByTerm)
       .group(this.group)
       .othersGrouper((topRows) => {
         const chart = this.pieChart;
@@ -162,12 +181,12 @@ const QuickValuesVisualization = React.createClass({
         const topRowsSum = d3.sum(topRows, dc.pluck('value'));
         const otherCount = this.state.total - this.state.missing - topRowsSum;
 
-        return topRows.concat([{ others: allKeys.filter((d) => !topSet.has(d)), key: 'Others', value: otherCount }]);
+        return topRows.concat([{ others: allKeys.filter(d => !topSet.has(d)), key: 'Others', value: otherCount }]);
       })
       .renderLabel(false)
       .renderTitle(false)
-      .slicesCap(this.NUMBER_OF_TOP_VALUES)
-      .ordering((d) => d.value)
+      .slicesCap(this.props.limit)
+      .ordering(d => d.value)
       .colors(D3Utils.glColourPalette());
 
     this._resizeVisualization(this.props.width, this.props.height, this.props.config.show_data_table);
@@ -222,7 +241,7 @@ const QuickValuesVisualization = React.createClass({
   },
   _restoreDataFilters() {
     if (this.pieChart !== undefined) {
-      this.filters.forEach((filter) => this.pieChart.filter(filter));
+      this.filters.forEach(filter => this.pieChart.filter(filter));
       this.filters = [];
     }
   },
@@ -259,7 +278,7 @@ const QuickValuesVisualization = React.createClass({
       analysisInformation.push(` and <em>${NumberUtils.formatNumber(this.state.others)}</em> other values`);
     }
 
-    return <span dangerouslySetInnerHTML={{ __html: `${analysisInformation.join(',')}.` }}/>;
+    return <span dangerouslySetInnerHTML={{ __html: `${analysisInformation.join(',')}.` }} />;
   },
   render() {
     let pieChartClassName;
@@ -294,7 +313,7 @@ const QuickValuesVisualization = React.createClass({
         <Panel>
           <ListGroup fill>
             <ListGroupItem>
-              <div ref="graph" className="quickvalues-graph"/>
+              <div ref="graph" className="quickvalues-graph" />
             </ListGroupItem>
             <ListGroupItem>
               {this._getAnalysisInformation()}
@@ -303,7 +322,7 @@ const QuickValuesVisualization = React.createClass({
         </Panel>
       );
     } else {
-      pieChart = <div ref="graph" className="quickvalues-graph"/>;
+      pieChart = <div ref="graph" className="quickvalues-graph" />;
     }
 
     return (
@@ -318,14 +337,14 @@ const QuickValuesVisualization = React.createClass({
               <div className="quickvalues-table">
                 <table ref="table" className="table table-condensed table-hover">
                   <thead>
-                  <tr>
-                    <th style={{ width: '60%' }}>Value</th>
-                    <th>%</th>
-                    <th>Count</th>
-                    {this.props.displayAddToSearchButton &&
-                    <th style={{ width: 30 }}>&nbsp;</th>
+                    <tr>
+                      <th style={{ width: '60%' }}>Value</th>
+                      <th>%</th>
+                      <th>Count</th>
+                      {this.props.displayAddToSearchButton &&
+                      <th style={{ width: 30 }}>&nbsp;</th>
                       }
-                  </tr>
+                    </tr>
                   </thead>
                 </table>
               </div>

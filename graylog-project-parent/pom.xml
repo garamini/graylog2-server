@@ -19,10 +19,6 @@
   -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <prerequisites>
-        <maven>3.1.0</maven>
-    </prerequisites>
-
     <modules>
         <module>../graylog2-server</module>
         <module>../integration-tests</module>
@@ -31,7 +27,7 @@
     <parent>
         <groupId>org.graylog</groupId>
         <artifactId>graylog-parent</artifactId>
-        <version>2.2.0-alpha.5-SNAPSHOT</version>
+        <version>3.0.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>graylog-project-parent</artifactId>
@@ -58,7 +54,7 @@
                 <scope>import</scope>
             </dependency>
             <dependency>
-                <groupId>com.github.joschi.jackson</groupId>
+                <groupId>com.fasterxml.jackson</groupId>
                 <artifactId>jackson-bom</artifactId>
                 <version>${jackson.version}</version>
                 <type>pom</type>
@@ -109,6 +105,18 @@
                 <artifactId>elasticsearch</artifactId>
                 <version>${elasticsearch.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.graylog.jest</groupId>
+                <artifactId>jest</artifactId>
+                <version>${jest.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>commons-logging</groupId>
+                        <artifactId>commons-logging</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
             <dependency>
                 <groupId>net.java.dev.jna</groupId>
                 <artifactId>jna</artifactId>
@@ -202,7 +210,7 @@
                 <version>${javax.ws.rs-api.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.hibernate</groupId>
+                <groupId>org.hibernate.validator</groupId>
                 <artifactId>hibernate-validator</artifactId>
                 <version>${hibernate-validator.version}</version>
             </dependency>
@@ -395,7 +403,7 @@
             </dependency>
 
             <dependency>
-                <groupId>io.airlift</groupId>
+                <groupId>com.github.rvesse</groupId>
                 <artifactId>airline</artifactId>
                 <version>${airline.version}</version>
             </dependency>
@@ -413,6 +421,12 @@
                 <groupId>com.google.auto.value</groupId>
                 <artifactId>auto-value</artifactId>
                 <version>${auto-value.version}</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.graylog.autovalue</groupId>
+                <artifactId>auto-value-javabean</artifactId>
+                <version>${auto-value-javabean.version}</version>
                 <scope>provided</scope>
             </dependency>
             <dependency>
@@ -492,6 +506,12 @@
                 <artifactId>rest-assured</artifactId>
                 <version>${restassured.version}</version>
                 <scope>test</scope>
+                <exclusions>
+                    <exclusion>
+                        <groupId>commons-logging</groupId>
+                        <artifactId>commons-logging</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <dependency>
                 <groupId>com.jayway.restassured</groupId>
@@ -509,6 +529,12 @@
                 <groupId>com.lordofthejars</groupId>
                 <artifactId>nosqlunit-mongodb</artifactId>
                 <version>${nosqlunit.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.github.joschi.nosqlunit</groupId>
+                <artifactId>nosqlunit-elasticsearch-http</artifactId>
+                <version>1.0.0-4+jackson</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
@@ -597,6 +623,7 @@
                     <argLine>-Djava.library.path=${project.basedir}/../lib/sigar-${sigar.version}</argLine>
                     <excludes>
                         <exclude>**/*IntegrationTest.java</exclude>
+                        <exclude>**/*IT.java</exclude>
                     </excludes>
                     <includes>
                         <include>**/*Spec.class</include>
@@ -703,12 +730,12 @@
                                 <plugin>
                                     <groupId>com.h3xstream.findsecbugs</groupId>
                                     <artifactId>findsecbugs-plugin</artifactId>
-                                    <version>1.4.6</version>
+                                    <version>1.5.0</version>
                                 </plugin>
                                 <plugin>
                                     <groupId>com.mebigfatguy.fb-contrib</groupId>
                                     <artifactId>fb-contrib</artifactId>
-                                    <version>6.6.1</version>
+                                    <version>6.8.3</version>
                                 </plugin>
                             </plugins>
                         </configuration>
@@ -726,22 +753,10 @@
                         <configuration>
                             <targetJdk>${maven.compiler.target}</targetJdk>
                             <failOnViolation>false</failOnViolation>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>check</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-checkstyle-plugin</artifactId>
-                        <configuration>
-                            <failOnViolation>false</failOnViolation>
-                            <logViolationsToConsole>false</logViolationsToConsole>
-                            <configLocation>config/checkstyle.xml</configLocation>
+                            <excludeRoots>
+                                <excludeRoot>${project.build.directory}/generated-sources</excludeRoot>
+                                <excludeRoot>${project.build.directory}/generated-test-sources</excludeRoot>
+                            </excludeRoots>
                         </configuration>
                         <executions>
                             <execution>

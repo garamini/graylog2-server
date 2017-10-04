@@ -1,25 +1,24 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 
 const DocumentTitle = React.createClass({
   propTypes: {
-    title: React.PropTypes.string.isRequired,
-    children: React.PropTypes.oneOfType([
-      React.PropTypes.arrayOf(React.PropTypes.element),
-      React.PropTypes.element,
+    title: PropTypes.string.isRequired,
+    children: PropTypes.oneOfType([
+      PropTypes.arrayOf(PropTypes.element),
+      PropTypes.element,
     ]).isRequired,
   },
 
   componentDidMount() {
-    this.originalTitle = document.title;
     document.title = `${document.title} - ${this.props.title}`;
   },
 
   componentWillUnmount() {
-    document.title = this.originalTitle;
+    document.title = this.defaultTitle;
   },
 
-  originalTitle: undefined,
-
+  defaultTitle: 'Graylog',
   render() {
     return this.props.children;
   },

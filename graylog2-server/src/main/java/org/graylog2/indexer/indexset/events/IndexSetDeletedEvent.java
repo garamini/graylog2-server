@@ -20,9 +20,12 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.auto.value.AutoValue;
-import org.hibernate.validator.constraints.NotBlank;
+import org.graylog.autovalue.WithBeanGetter;
+
+import javax.validation.constraints.NotBlank;
 
 @AutoValue
+@WithBeanGetter
 @JsonAutoDetect
 public abstract class IndexSetDeletedEvent {
     @JsonProperty("id")

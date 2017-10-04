@@ -23,7 +23,6 @@ import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import org.apache.shiro.authz.annotation.RequiresAuthentication;
-import org.elasticsearch.action.search.SearchPhaseExecutionException;
 import org.glassfish.jersey.server.ChunkedOutput;
 import org.graylog2.decorators.DecoratorProcessor;
 import org.graylog2.indexer.results.ScrollResult;
@@ -41,11 +40,11 @@ import org.graylog2.rest.models.search.responses.TermsResult;
 import org.graylog2.rest.models.search.responses.TermsStatsResult;
 import org.graylog2.rest.resources.search.responses.SearchResponse;
 import org.graylog2.shared.security.RestPermissions;
-import org.hibernate.validator.constraints.NotEmpty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import javax.validation.constraints.NotEmpty;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
@@ -107,13 +106,9 @@ public class AbsoluteSearchResource extends SearchResource {
                 .sorting(sorting)
                 .build();
 
-        final Optional<String> streamId = extractStreamId(filter);
+        final Optional<String> streamId = Searches.extractStreamId(filter);
 
-        try {
-            return buildSearchResponse(searches.search(searchesConfig), timeRange, decorate, streamId);
-        } catch (SearchPhaseExecutionException e) {
-            throw createRequestExceptionForParseFailure(query, e);
-        }
+        return buildSearchResponse(searches.search(searchesConfig), timeRange, decorate, streamId);
     }
 
     @GET
@@ -139,13 +134,9 @@ public class AbsoluteSearchResource extends SearchResource {
         final List<String> fieldList = parseFields(fields);
         final TimeRange timeRange = buildAbsoluteTimeRange(from, to);
 
-        try {
-            final ScrollResult scroll = searches
-                    .scroll(query, timeRange, limit, offset, fieldList, filter);
-            return buildChunkedOutput(scroll, limit);
-        } catch (SearchPhaseExecutionException e) {
-            throw createRequestExceptionForParseFailure(query, e);
-        }
+        final ScrollResult scroll = searches
+                .scroll(query, timeRange, limit, offset, fieldList, filter);
+        return buildChunkedOutput(scroll, limit);
     }
 
     @GET
@@ -194,11 +185,7 @@ public class AbsoluteSearchResource extends SearchResource {
             @ApiParam(name = "filter", value = "Filter", required = false) @QueryParam("filter") String filter) {
         checkSearchPermission(filter, RestPermissions.SEARCHES_ABSOLUTE);
 
-        try {
-            return buildTermsResult(searches.terms(field, size, query, filter, buildAbsoluteTimeRange(from, to)));
-        } catch (SearchPhaseExecutionException e) {
-            throw createRequestExceptionForParseFailure(query, e);
-        }
+        return buildTermsResult(searches.terms(field, size, query, filter, buildAbsoluteTimeRange(from, to)));
     }
 
     @GET
@@ -224,19 +211,15 @@ public class AbsoluteSearchResource extends SearchResource {
             @ApiParam(name = "filter", value = "Filter", required = false) @QueryParam("filter") String filter) {
         checkSearchPermission(filter, RestPermissions.SEARCHES_ABSOLUTE);
 
-        try {
-            return buildTermsStatsResult(
-                    searches.termsStats(keyField,
-                            valueField,
-                            Searches.TermsStatsOrder.valueOf(order.toUpperCase(Locale.ENGLISH)),
-                            size,
-                            query,
-                            filter,
-                            buildAbsoluteTimeRange(from, to)
-                    ));
-        } catch (SearchPhaseExecutionException e) {
-            throw createRequestExceptionForParseFailure(query, e);
-        }
+        return buildTermsStatsResult(
+                searches.termsStats(keyField,
+                        valueField,
+                        Searches.TermsStatsOrder.valueOf(order.toUpperCase(Locale.ENGLISH)),
+                        size,
+                        query,
+                        filter,
+                        buildAbsoluteTimeRange(from, to)
+                ));
     }
 
     @GET
@@ -260,11 +243,7 @@ public class AbsoluteSearchResource extends SearchResource {
             @ApiParam(name = "filter", value = "Filter", required = false) @QueryParam("filter") String filter) {
         checkSearchPermission(filter, RestPermissions.SEARCHES_ABSOLUTE);
 
-        try {
-            return buildFieldStatsResult(fieldStats(field, query, filter, buildAbsoluteTimeRange(from, to)));
-        } catch (SearchPhaseExecutionException e) {
-            throw createRequestExceptionForParseFailure(query, e);
-        }
+        return buildFieldStatsResult(fieldStats(field, query, filter, buildAbsoluteTimeRange(from, to)));
     }
 
     @GET
@@ -289,18 +268,14 @@ public class AbsoluteSearchResource extends SearchResource {
         interval = interval.toUpperCase(Locale.ENGLISH);
         validateInterval(interval);
 
-        try {
-            return buildHistogramResult(
-                    searches.histogram(
-                            query,
-                            Searches.DateHistogramInterval.valueOf(interval),
-                            filter,
-                            buildAbsoluteTimeRange(from, to)
-                    )
-            );
-        } catch (SearchPhaseExecutionException e) {
-            throw createRequestExceptionForParseFailure(query, e);
-        }
+        return buildHistogramResult(
+                searches.histogram(
+                        query,
+                        Searches.DateHistogramInterval.valueOf(interval),
+                        filter,
+                        buildAbsoluteTimeRange(from, to)
+                )
+        );
     }
 
     @GET
@@ -330,12 +305,8 @@ public class AbsoluteSearchResource extends SearchResource {
         interval = interval.toUpperCase(Locale.ENGLISH);
         validateInterval(interval);
 
-        try {
-            return buildHistogramResult(fieldHistogram(field, query, interval, filter, buildAbsoluteTimeRange(from, to),
-                                                       includeCardinality));
-        } catch (SearchPhaseExecutionException e) {
-            throw createRequestExceptionForParseFailure(query, e);
-        }
+        return buildHistogramResult(fieldHistogram(field, query, interval, filter, buildAbsoluteTimeRange(from, to),
+                                                   includeCardinality));
 
     }
 

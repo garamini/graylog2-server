@@ -1,5 +1,6 @@
-import React, {PropTypes} from 'react';
-import {Alert} from 'react-bootstrap';
+import PropTypes from 'prop-types';
+import React from 'react';
+import { Alert } from 'react-bootstrap';
 import Immutable from 'immutable';
 
 import StoreProvider from 'injection/StoreProvider';
@@ -32,11 +33,11 @@ const MessageFieldDescription = React.createClass({
   loadTerms(field) {
     return () => {
       const promise = MessagesActions.fieldTerms.triggerPromise(this.props.message.index, this.props.message.fields[field]);
-      promise.then((terms) => this._onTermsLoaded(terms));
+      promise.then(terms => this._onTermsLoaded(terms));
     };
   },
   _onTermsLoaded(terms) {
-    this.setState({messageTerms: Immutable.fromJS(terms)});
+    this.setState({ messageTerms: Immutable.fromJS(terms) });
   },
   _shouldShowTerms() {
     return this.state.messageTerms.size !== 0;
@@ -60,13 +61,13 @@ const MessageFieldDescription = React.createClass({
 
     let fieldActions;
     if (this.props.customFieldActions) {
-      fieldActions = React.cloneElement(this.props.customFieldActions, {fieldName: this.props.fieldName, message: this.props.message});
+      fieldActions = React.cloneElement(this.props.customFieldActions, { fieldName: this.props.fieldName, message: this.props.message });
     } else {
       fieldActions = (
         <MessageFieldSearchActions fieldName={this.props.fieldName}
                                    message={this.props.message}
                                    onAddFieldToSearchBar={this.addFieldToSearchBar}
-                                   onLoadTerms={this.loadTerms}/>
+                                   onLoadTerms={this.loadTerms} />
       );
     }
 
@@ -76,7 +77,7 @@ const MessageFieldDescription = React.createClass({
     const className = this.props.fieldName === 'message' || this.props.fieldName === 'full_message' ? 'message-field' : '';
 
     return (
-      <dd className={className} key={this.props.fieldName + 'dd'}>
+      <dd className={className} key={`${this.props.fieldName}dd`}>
         {this._getFormattedFieldActions()}
         <div className="field-value">{this.props.possiblyHighlight(this.props.fieldName)}</div>
         {this._shouldShowTerms() &&

@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import Reflux from 'reflux';
 
@@ -19,8 +20,8 @@ import DecoratorStyles from '!style!css!components/search/decoratorStyles.css';
 
 const Decorator = React.createClass({
   propTypes: {
-    decorator: React.PropTypes.object.isRequired,
-    typeDefinition: React.PropTypes.object.isRequired,
+    decorator: PropTypes.object.isRequired,
+    typeDefinition: PropTypes.object.isRequired,
   },
   mixins: [Reflux.connect(DecoratorsStore), Reflux.connect(CurrentUserStore), PermissionsMixin],
   componentDidMount() {
@@ -40,6 +41,7 @@ const Decorator = React.createClass({
       type: data.type,
       config: data.configuration,
       order: this.props.decorator.order,
+      stream: this.props.decorator.stream,
     });
   },
   _decoratorTypeNotPresent() {
@@ -54,7 +56,7 @@ const Decorator = React.createClass({
     const resolvedConfig = {};
     const configKeys = Object.keys(config);
 
-    configKeys.forEach(key => {
+    configKeys.forEach((key) => {
       const configValues = (typeConfig[key] ? typeConfig[key].additional_info.values : undefined);
       const originalValue = config[key];
       if (configValues) {
@@ -73,7 +75,7 @@ const Decorator = React.createClass({
     return (
       <DropdownButton id={`decorator-${decorator.id}-actions`} bsStyle="default" bsSize="xsmall" title="Actions" pullRight>
         <MenuItem onSelect={this._handleEditClick} disabled={!editPermission}>Edit</MenuItem>
-        <MenuItem divider/>
+        <MenuItem divider />
         <MenuItem onSelect={this._handleDeleteClick} disabled={!editPermission}>Delete</MenuItem>
       </DropdownButton>
     );
@@ -96,7 +98,7 @@ const Decorator = React.createClass({
         <ConfigurationWell key={`configuration-well-decorator-${decorator.id}`}
                            id={decorator.id}
                            configuration={config}
-                           typeDefinition={this.props.typeDefinition}/>
+                           typeDefinition={this.props.typeDefinition} />
         <ConfigurationForm ref="editForm"
                            key="configuration-form-decorator"
                            configFields={this.props.typeDefinition.requested_configuration}

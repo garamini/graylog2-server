@@ -1,7 +1,10 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import deepEqual from 'deep-equal';
 
 import NumberUtils from 'util/NumberUtils';
+
+import style from './NumericVisualization.css';
 
 const TrendIndicatorType = {
   HIGHER: 'higher',
@@ -10,10 +13,10 @@ const TrendIndicatorType = {
 
 const NumericVisualization = React.createClass({
   propTypes: {
-    config: React.PropTypes.object.isRequired,
-    data: React.PropTypes.oneOfType([
-      React.PropTypes.object,
-      React.PropTypes.number,
+    config: PropTypes.object.isRequired,
+    data: PropTypes.oneOfType([
+      PropTypes.object,
+      PropTypes.number,
     ]).isRequired,
   },
   getInitialState() {
@@ -48,7 +51,7 @@ const NumericVisualization = React.createClass({
         percentage: this._calculatePercentage(normalizedNowNumber, normalizedPreviousNumber),
       };
     } else {
-      state = {currentNumber: props};
+      state = { currentNumber: props };
     }
     return state;
   },
@@ -120,19 +123,19 @@ const NumericVisualization = React.createClass({
     return Math.abs(this.state.percentage) >= this.PERCENTAGE_PER_INDICATOR * index;
   },
   _getIndicatorClass(index, trendIndicatorType) {
-    const className = 'trend-icon';
+    const className = style.trendIcon;
 
     const indicatorIsActive = this._isIndicatorActive(index, trendIndicatorType);
     if (!indicatorIsActive) {
       return className;
     }
 
-    const lowerClass = Boolean(this.props.config.lower_is_better) ? 'trend-good' : 'trend-bad';
-    const higherClass = Boolean(this.props.config.lower_is_better) ? 'trend-bad' : 'trend-good';
+    const lowerClass = this.props.config.lower_is_better ? style.trendGood : style.trendBad;
+    const higherClass = this.props.config.lower_is_better ? style.trendBad : style.trendGood;
 
     const activeClass = trendIndicatorType === TrendIndicatorType.HIGHER ? higherClass : lowerClass;
 
-    return className + ' ' + activeClass;
+    return `${className} ${activeClass}`;
   },
   _getHigherIndicatorClass(index) {
     return this._getIndicatorClass(index, TrendIndicatorType.HIGHER);
@@ -143,29 +146,29 @@ const NumericVisualization = React.createClass({
   render() {
     let trendIndicators;
 
-    if (Boolean(this.props.config.trend)) {
+    if (this.props.config.trend) {
       trendIndicators = (
-        <div className="trend-indicators">
-          <div className="trend-icons-higher">
+        <div className={style.trendIndicators}>
+          <div>
             <div className={this._getHigherIndicatorClass(0)}>
-              <span className="trend-higher"><i className="fa fa-angle-up"/></span>
+              <span><i className="fa fa-angle-up" /></span>
             </div>
             <div className={this._getHigherIndicatorClass(1)}>
-              <span className="trend-higher"><i className="fa fa-angle-up"/></span>
+              <span><i className="fa fa-angle-up" /></span>
             </div>
             <div className={this._getHigherIndicatorClass(2)}>
-              <span className="trend-higher"><i className="fa fa-angle-up"/></span>
+              <span><i className="fa fa-angle-up" /></span>
             </div>
           </div>
-          <div className="trend-icons-lower">
+          <div>
             <div className={this._getLowerIndicatorClass(0)}>
-              <span className="trend-lower"><i className="fa fa-angle-down"/></span>
+              <span><i className="fa fa-angle-down" /></span>
             </div>
             <div className={this._getLowerIndicatorClass(1)}>
-              <span className="trend-lower"><i className="fa fa-angle-down"/></span>
+              <span><i className="fa fa-angle-down" /></span>
             </div>
             <div className={this._getLowerIndicatorClass(2)}>
-              <span className="trend-lower"><i className="fa fa-angle-down"/></span>
+              <span><i className="fa fa-angle-down" /></span>
             </div>
           </div>
         </div>
@@ -173,11 +176,12 @@ const NumericVisualization = React.createClass({
     }
 
     return (
-      <div className="number">
-        <div className="text-center">
-          <span className="value" style={{fontSize: this._calculateFontSize()}}>
-            {this._formatData()}
-          </span>
+      <div className={style.number}>
+        <div className={style.aside} />
+        <div className={style.value} style={{ fontSize: this._calculateFontSize() }}>
+          {this._formatData()}
+        </div>
+        <div className={style.aside}>
           {trendIndicators}
         </div>
       </div>

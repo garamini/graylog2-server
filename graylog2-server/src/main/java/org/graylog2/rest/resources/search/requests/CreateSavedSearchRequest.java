@@ -20,12 +20,14 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.auto.value.AutoValue;
-import org.hibernate.validator.constraints.NotEmpty;
+import org.graylog.autovalue.WithBeanGetter;
 
+import javax.validation.constraints.NotEmpty;
 import java.util.Map;
 
 @JsonAutoDetect
 @AutoValue
+@WithBeanGetter
 public abstract class CreateSavedSearchRequest {
     @JsonProperty
     public abstract String title();

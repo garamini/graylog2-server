@@ -1,8 +1,9 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import Reflux from 'reflux';
 import Immutable from 'immutable';
 import MessageShow from 'components/search/MessageShow';
-import Spinner from 'components/common/Spinner';
+import { DocumentTitle, Spinner } from 'components/common';
 
 import ActionsProvider from 'injection/ActionsProvider';
 const NodesActions = ActionsProvider.getActions('Nodes');
@@ -30,11 +31,11 @@ const ShowMessagePage = React.createClass({
     };
   },
   componentDidMount() {
-    MessagesActions.loadMessage.triggerPromise(this.props.params.index, this.props.params.messageId).then(message => {
+    MessagesActions.loadMessage.triggerPromise(this.props.params.index, this.props.params.messageId).then((message) => {
       this.setState({ message: message });
-      InputsActions.get.triggerPromise(message.source_input_id);
+      InputsActions.getOptional.triggerPromise(message.source_input_id);
     });
-    StreamsStore.listStreams().then(streams => {
+    StreamsStore.listStreams().then((streams) => {
       const streamsMap = {};
       streams.forEach((stream) => {
         streamsMap[stream.id] = stream;
@@ -54,12 +55,13 @@ const ShowMessagePage = React.createClass({
   render() {
     if (this._isLoaded()) {
       return (
-        <MessageShow message={this.state.message} inputs={this.state.inputs} nodes={Immutable.Map(this.state.nodes)}
-                     streams={this.state.streams} allStreamsLoaded searchConfig={this.props.searchConfig} />
+        <DocumentTitle title={`Message ${this.props.params.messageId} on ${this.props.params.index}`}>
+          <MessageShow message={this.state.message} inputs={this.state.inputs} nodes={Immutable.Map(this.state.nodes)}
+                       streams={this.state.streams} allStreamsLoaded searchConfig={this.props.searchConfig} />
+        </DocumentTitle>
       );
-    } else {
-      return <Spinner />;
     }
+    return <Spinner />;
   },
 });
 

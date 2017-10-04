@@ -20,18 +20,20 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.auto.value.AutoValue;
-import org.hibernate.validator.constraints.NotEmpty;
+import org.graylog.autovalue.WithBeanGetter;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.mongojack.Id;
 import org.mongojack.ObjectId;
 
 import javax.annotation.Nullable;
+import javax.validation.constraints.NotEmpty;
 import java.util.Collections;
 import java.util.Set;
 
 @JsonAutoDetect
 @AutoValue
+@WithBeanGetter
 public abstract class ClusterEvent {
     @Id
     @ObjectId

@@ -16,7 +16,7 @@
  */
 package org.graylog2.plugin;
 
-import com.google.common.base.Optional;
+import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.io.BaseEncoding;
 import com.google.common.io.ByteStreams;
 import com.google.common.primitives.Doubles;
@@ -43,13 +43,12 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.SortedSet;
 import java.util.UUID;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.InflaterInputStream;
@@ -304,10 +303,8 @@ public final class Tools {
         return UUID.randomUUID().toString();
     }
 
-    public static <T extends Comparable<? super T>> List<T> asSortedList(Collection<T> c) {
-        List<T> list = new ArrayList<T>(c);
-        java.util.Collections.sort(list);
-        return list;
+    public static <T extends Comparable<? super T>> SortedSet<T> asSortedSet(Collection<T> c) {
+        return ImmutableSortedSet.copyOf(c);
     }
 
     public static String buildElasticSearchTimeFormat(DateTime timestamp) {
@@ -431,6 +428,18 @@ public final class Tools {
          * user sent them in as non-numerical type.
          */
         return Doubles.tryParse(x.toString());
+    }
+
+    public static Number getNumber(Object o, Number defaultValue) {
+        if (o instanceof Number) {
+            return (Number)o;
+        }
+
+        try {
+            return Double.valueOf(String.valueOf(o));
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
     }
 
     /**
@@ -563,7 +572,7 @@ public final class Tools {
 
     @Nullable
     public static URI normalizeURI(@Nullable final URI uri, String scheme, int port, String path) {
-        return Optional.fromNullable(uri)
+        return com.google.common.base.Optional.fromNullable(uri)
                 .transform(u -> getUriWithScheme(u, scheme))
                 .transform(u -> getUriWithPort(u, port))
                 .transform(u -> getUriWithDefaultPath(u, path))

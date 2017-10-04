@@ -16,17 +16,16 @@
  */
 package org.graylog2.periodical;
 
-import org.elasticsearch.cluster.health.ClusterHealthStatus;
+import io.searchbox.cluster.Health;
 import org.graylog2.indexer.IndexSet;
 import org.graylog2.indexer.IndexSetRegistry;
 import org.graylog2.indexer.NoTargetIndexException;
 import org.graylog2.indexer.cluster.Cluster;
+import org.graylog2.indexer.indexset.IndexSetConfig;
 import org.graylog2.indexer.indices.Indices;
 import org.graylog2.indexer.indices.TooManyAliasesException;
-import org.graylog2.indexer.management.IndexManagementConfig;
 import org.graylog2.notifications.Notification;
 import org.graylog2.notifications.NotificationService;
-import org.graylog2.plugin.cluster.ClusterConfigService;
 import org.graylog2.plugin.indexer.rotation.RotationStrategy;
 import org.graylog2.plugin.periodical.Periodical;
 import org.graylog2.plugin.system.NodeId;
@@ -48,7 +47,6 @@ public class IndexRotationThread extends Periodical {
     private final ActivityWriter activityWriter;
     private final Indices indices;
     private final NodeId nodeId;
-    private final ClusterConfigService clusterConfigService;
     private final Map<String, Provider<RotationStrategy>> rotationStrategyMap;
 
     @Inject
@@ -58,7 +56,6 @@ public class IndexRotationThread extends Periodical {
                                Cluster cluster,
                                ActivityWriter activityWriter,
                                NodeId nodeId,
-                               ClusterConfigService clusterConfigService,
                                Map<String, Provider<RotationStrategy>> rotationStrategyMap) {
         this.notificationService = notificationService;
         this.indexSetRegistry = indexSetRegistry;
@@ -66,7 +63,6 @@ public class IndexRotationThread extends Periodical {
         this.activityWriter = activityWriter;
         this.indices = indices;
         this.nodeId = nodeId;
-        this.clusterConfigService = clusterConfigService;
         this.rotationStrategyMap = rotationStrategyMap;
     }
 
@@ -76,8 +72,12 @@ public class IndexRotationThread extends Periodical {
         if (cluster.isConnected()) {
             indexSetRegistry.forEach((indexSet) -> {
                 try {
-                    checkAndRepair(indexSet);
-                    checkForRotation(indexSet);
+                    if (indexSet.getConfig().isWritable()) {
+                        checkAndRepair(indexSet);
+                        checkForRotation(indexSet);
+                    } else {
+                        LOG.debug("Skipping non-writable index set <{}> ({})", indexSet.getConfig().id(), indexSet.getConfig().title());
+                    }
                 } catch (Exception e) {
                     LOG.error("Couldn't point deflector to a new index", e);
                 }
@@ -93,22 +93,13 @@ public class IndexRotationThread extends Periodical {
     }
 
     protected void checkForRotation(IndexSet indexSet) {
-        // TODO 2.2: Retention strategy config is per write target, not global.
-        final IndexManagementConfig config = clusterConfigService.get(IndexManagementConfig.class);
-
-        if (config == null) {
-            LOG.warn("No index management configuration found, not running index rotation!");
-            rotationProblemNotification("Index Rotation Problem!",
-                    "No index management configuration found, not running index rotation! Please fix your index rotation configuration!");
-            return;
-        }
-
-        final Provider<RotationStrategy> rotationStrategyProvider = rotationStrategyMap.get(config.rotationStrategy());
+        final IndexSetConfig config = indexSet.getConfig();
+        final Provider<RotationStrategy> rotationStrategyProvider = rotationStrategyMap.get(config.rotationStrategyClass());
 
         if (rotationStrategyProvider == null) {
-            LOG.warn("Rotation strategy \"{}\" not found, not running index rotation!", config.rotationStrategy());
+            LOG.warn("Rotation strategy \"{}\" not found, not running index rotation!", config.rotationStrategyClass());
             rotationProblemNotification("Index Rotation Problem!",
-                    "Index rotation strategy " + config.rotationStrategy() + " not found! Please fix your index rotation configuration!");
+                    "Index rotation strategy " + config.rotationStrategyClass() + " not found! Please fix your index rotation configuration!");
             return;
         }
 
@@ -150,26 +141,26 @@ public class IndexRotationThread extends Periodical {
             try {
                 String currentTarget;
                 try {
-                    currentTarget = indexSet.getCurrentActualTargetIndex();
+                    currentTarget = indexSet.getActiveWriteIndex();
                 } catch (TooManyAliasesException e) {
                     // If we get this exception, there are multiple indices which have the deflector alias set.
                     // We try to cleanup the alias and try again. This should not happen, but might under certain
                     // circumstances.
                     indexSet.cleanupAliases(e.getIndices());
                     try {
-                        currentTarget = indexSet.getCurrentActualTargetIndex();
+                        currentTarget = indexSet.getActiveWriteIndex();
                     } catch (TooManyAliasesException e1) {
                         throw new IllegalStateException(e1);
                     }
                 }
-                String shouldBeTarget = indexSet.getNewestTargetName();
+                String shouldBeTarget = indexSet.getNewestIndex();
 
                 if (!shouldBeTarget.equals(currentTarget)) {
                     String msg = "Deflector is pointing to [" + currentTarget + "], not the newest one: [" + shouldBeTarget + "]. Re-pointing.";
                     LOG.warn(msg);
                     activityWriter.write(new Activity(msg, IndexRotationThread.class));
 
-                    if (ClusterHealthStatus.RED == indices.waitForRecovery(shouldBeTarget)) {
+                    if (Health.Status.RED == indices.waitForRecovery(shouldBeTarget)) {
                         LOG.error("New target index for deflector didn't get healthy within timeout. Skipping deflector update.");
                     } else {
                         indexSet.pointTo(shouldBeTarget, currentTarget);

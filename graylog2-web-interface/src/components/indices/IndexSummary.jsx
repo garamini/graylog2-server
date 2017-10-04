@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Label } from 'react-bootstrap';
 
@@ -8,11 +9,11 @@ import { IndexSizeSummary } from 'components/indices';
 
 const IndexSummary = React.createClass({
   propTypes: {
-    children: React.PropTypes.node.isRequired,
-    index: React.PropTypes.object.isRequired,
-    indexRange: React.PropTypes.object,
-    isDeflector: React.PropTypes.bool.isRequired,
-    name: React.PropTypes.string.isRequired,
+    children: PropTypes.node.isRequired,
+    index: PropTypes.object.isRequired,
+    indexRange: PropTypes.object,
+    isDeflector: PropTypes.bool.isRequired,
+    name: PropTypes.string.isRequired,
   },
   getInitialState() {
     return { showDetails: this.props.isDeflector };
@@ -20,7 +21,7 @@ const IndexSummary = React.createClass({
   _formatLabels(index) {
     const labels = [];
     if (index.is_deflector) {
-      labels.push(<Label key={`${this.props.name}-deflector-label`} bsStyle="primary">deflector</Label>);
+      labels.push(<Label key={`${this.props.name}-deflector-label`} bsStyle="primary">active write index</Label>);
     }
 
     if (index.is_closed) {
@@ -65,9 +66,9 @@ const IndexSummary = React.createClass({
   },
   _formatShowDetailsLink() {
     if (this.state.showDetails) {
-      return <span className="index-more-actions"><i className="fa fa-caret-down"/> Hide Details / Actions</span>;
+      return <span className="index-more-actions"><i className="fa fa-caret-down" /> Hide Details / Actions</span>;
     }
-    return <span className="index-more-actions"><i className="fa fa-caret-right"/> Show Details / Actions</span>;
+    return <span className="index-more-actions"><i className="fa fa-caret-right" /> Show Details / Actions</span>;
   },
   _toggleShowDetails(event) {
     event.preventDefault();

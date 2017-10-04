@@ -24,6 +24,7 @@ import com.google.common.base.Strings;
 import com.google.common.util.concurrent.AbstractIdleService;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.glassfish.grizzly.http.CompressionConfig;
+import org.glassfish.grizzly.http.server.ErrorPageGenerator;
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.grizzly.http.server.NetworkListener;
 import org.glassfish.grizzly.ssl.SSLContextConfigurator;
@@ -83,6 +84,7 @@ import java.util.stream.Collectors;
 
 import static com.codahale.metrics.MetricRegistry.name;
 import static com.google.common.base.MoreObjects.firstNonNull;
+import static java.util.Objects.requireNonNull;
 
 public class JerseyService extends AbstractIdleService {
     public static final String PLUGIN_PREFIX = "/plugins";
@@ -100,6 +102,7 @@ public class JerseyService extends AbstractIdleService {
     private final Set<PluginAuditEventTypes> pluginAuditEventTypes;
     private final ObjectMapper objectMapper;
     private final MetricRegistry metricRegistry;
+    private final ErrorPageGenerator errorPageGenerator;
 
     private HttpServer apiHttpServer = null;
     private HttpServer webHttpServer = null;
@@ -114,21 +117,26 @@ public class JerseyService extends AbstractIdleService {
                          @Named("RestControllerPackages") final String[] restControllerPackages,
                          Set<PluginAuditEventTypes> pluginAuditEventTypes,
                          ObjectMapper objectMapper,
-                         MetricRegistry metricRegistry) {
-        this.configuration = configuration;
-        this.dynamicFeatures = dynamicFeatures;
-        this.containerResponseFilters = containerResponseFilters;
-        this.exceptionMappers = exceptionMappers;
-        this.additionalComponents = additionalComponents;
-        this.pluginRestResources = pluginRestResources;
-        this.restControllerPackages = restControllerPackages;
-        this.pluginAuditEventTypes = pluginAuditEventTypes;
-        this.objectMapper = objectMapper;
-        this.metricRegistry = metricRegistry;
+                         MetricRegistry metricRegistry,
+                         ErrorPageGenerator errorPageGenerator) {
+        this.configuration = requireNonNull(configuration, "configuration");
+        this.dynamicFeatures = requireNonNull(dynamicFeatures, "dynamicFeatures");
+        this.containerResponseFilters = requireNonNull(containerResponseFilters, "containerResponseFilters");
+        this.exceptionMappers = requireNonNull(exceptionMappers, "exceptionMappers");
+        this.additionalComponents = requireNonNull(additionalComponents, "additionalComponents");
+        this.pluginRestResources = requireNonNull(pluginRestResources, "pluginResources");
+        this.restControllerPackages = requireNonNull(restControllerPackages, "restControllerPackages");
+        this.pluginAuditEventTypes = requireNonNull(pluginAuditEventTypes, "pluginAuditEventTypes");
+        this.objectMapper = requireNonNull(objectMapper, "objectMapper");
+        this.metricRegistry = requireNonNull(metricRegistry, "metricRegistry");
+        this.errorPageGenerator = requireNonNull(errorPageGenerator, "errorPageGenerator");
     }
 
     @Override
     protected void startUp() throws Exception {
+        // we need to work around the change introduced in https://github.com/GrizzlyNIO/grizzly-mirror/commit/ba9beb2d137e708e00caf7c22603532f753ec850
+        // because the PooledMemoryManager which is default now uses 10% of the heap no matter what
+        System.setProperty("org.glassfish.grizzly.DEFAULT_MEMORY_MANAGER", "org.glassfish.grizzly.memory.HeapMemoryManager");
         startUpApi();
         if (configuration.isWebEnable() && !configuration.isRestAndWebOnSamePort()) {
             startUpWeb();
@@ -160,7 +168,6 @@ public class JerseyService extends AbstractIdleService {
                 sslEngineConfigurator,
                 configuration.getWebThreadPoolSize(),
                 configuration.getWebSelectorRunnersCount(),
-                configuration.getWebMaxInitialLineLength(),
                 configuration.getWebMaxHeaderSize(),
                 configuration.isWebEnableGzip(),
                 configuration.isWebEnableCors(),
@@ -217,7 +224,6 @@ public class JerseyService extends AbstractIdleService {
                 sslEngineConfigurator,
                 configuration.getRestThreadPoolSize(),
                 configuration.getRestSelectorRunnersCount(),
-                configuration.getRestMaxInitialLineLength(),
                 configuration.getRestMaxHeaderSize(),
                 configuration.isRestEnableGzip(),
                 configuration.isRestEnableCors(),
@@ -317,7 +323,6 @@ public class JerseyService extends AbstractIdleService {
                              SSLEngineConfigurator sslEngineConfigurator,
                              int threadPoolSize,
                              int selectorRunnersCount,
-                             int maxInitialLineLength,
                              int maxHeaderSize,
                              boolean enableGzip,
                              boolean enableCors,
@@ -338,8 +343,7 @@ public class JerseyService extends AbstractIdleService {
                 false);
 
         final NetworkListener listener = httpServer.getListener("grizzly");
-        listener.setMaxHttpHeaderSize(maxInitialLineLength);
-        listener.setMaxRequestHeaders(maxHeaderSize);
+        listener.setMaxHttpHeaderSize(maxHeaderSize);
 
         final ExecutorService workerThreadPoolExecutor = instrumentedExecutor(
                 namePrefix + "-worker-executor",
@@ -352,6 +356,7 @@ public class JerseyService extends AbstractIdleService {
         // See "Selector runners count" at https://grizzly.java.net/bestpractices.html for details.
         listener.getTransport().setSelectorRunnersCount(selectorRunnersCount);
 
+        listener.setDefaultErrorPageGenerator(errorPageGenerator);
 
         if(enableGzip) {
             final CompressionConfig compressionConfig = listener.getCompressionConfig();
@@ -382,7 +387,7 @@ public class JerseyService extends AbstractIdleService {
             throw new IllegalStateException("Couldn't initialize SSL context for HTTP server");
         }
 
-        return new SSLEngineConfigurator(sslContext.createSSLContext(), false, false, false);
+        return new SSLEngineConfigurator(sslContext.createSSLContext(false), false, false, false);
     }
 
     private ExecutorService instrumentedExecutor(final String executorName,

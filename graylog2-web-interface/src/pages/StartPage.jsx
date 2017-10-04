@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import Reflux from 'reflux';
 
@@ -15,7 +16,7 @@ const GettingStartedActions = ActionsProvider.getActions('GettingStarted');
 
 const StartPage = React.createClass({
   propTypes: {
-    history: React.PropTypes.object.isRequired,
+    history: PropTypes.object.isRequired,
   },
   mixins: [Reflux.connect(CurrentUserStore), Reflux.listenTo(GettingStartedStore, 'onGettingStartedUpdate')],
   getInitialState() {
@@ -41,7 +42,7 @@ const StartPage = React.createClass({
   _redirectToStartpage() {
     // Show getting started page if user is an admin and getting started wasn't dismissed
     if (PermissionsMixin.isPermitted(this.state.currentUser.permissions, ['inputs:create'])) {
-      if (!!this.state.gettingStarted.show) {
+      if (this.state.gettingStarted.show) {
         this._redirect(Routes.GETTING_STARTED);
         return;
       }
@@ -69,7 +70,7 @@ const StartPage = React.createClass({
     return !this.state.currentUser || !this.state.gettingStarted;
   },
   render() {
-    return <Spinner/>;
+    return <Spinner />;
   },
 });
 

@@ -1,8 +1,10 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import Reflux from 'reflux';
-import { Input, Button, Row, Col, Alert, Panel } from 'react-bootstrap';
+import { Button, Row, Col, Alert, Panel } from 'react-bootstrap';
 import Routes from 'routing/Routes';
 
+import { Input } from 'components/bootstrap';
 import PermissionsMixin from 'util/PermissionsMixin';
 import UserNotification from 'util/UserNotification';
 import ValidationsUtils from 'util/ValidationsUtils';
@@ -21,15 +23,14 @@ import { IfPermitted, MultiSelect, TimezoneSelect, Spinner } from 'components/co
 
 const UserForm = React.createClass({
   propTypes: {
-    user: React.PropTypes.object.isRequired,
-    history: React.PropTypes.object,
+    user: PropTypes.object.isRequired,
+    history: PropTypes.object,
   },
   mixins: [PermissionsMixin, Reflux.connect(CurrentUserStore)],
   getInitialState() {
     return {
       streams: undefined,
       dashboards: undefined,
-      roles: undefined,
       user: this._getUserStateFromProps(this.props),
     };
   },
@@ -61,6 +62,7 @@ const UserForm = React.createClass({
       permissions: props.user.permissions,
       read_only: props.user.read_only,
       external: props.user.external,
+      roles: props.user.roles,
     };
   },
 
@@ -71,8 +73,8 @@ const UserForm = React.createClass({
   },
   formatSelectedOptions(permissions, permission, collection) {
     return collection
-      .filter((item) => this.isPermitted(permissions, [`${permission}:${item.id}`]))
-      .map((item) => item.id)
+      .filter(item => this.isPermitted(permissions, [`${permission}:${item.id}`]))
+      .map(item => item.id)
       .join(',');
   },
   _onPasswordChange() {
@@ -145,7 +147,7 @@ const UserForm = React.createClass({
 
       // Remove edit permissions to entities without read permissions
       if (permission === 'read') {
-        previousPermissions.forEach(previousPermission => {
+        previousPermissions.forEach((previousPermission) => {
           // Do nothing if permission is still there
           if (updatedPermissions.some(p => p === previousPermission)) {
             return;
@@ -159,7 +161,7 @@ const UserForm = React.createClass({
 
       // Grant read permissions to entities with edit permissions
       if (permission === 'edit') {
-        updatedPermissions.forEach(updatePermission => {
+        updatedPermissions.forEach((updatePermission) => {
           // Do nothing if permission was there before
           if (previousPermissions.some(p => p === updatePermission)) {
             return;
@@ -176,7 +178,7 @@ const UserForm = React.createClass({
   },
 
   _onCancel() {
-    this.props.history.pushState(null, Routes.SYSTEM.AUTHENTICATION.USERS.LIST);
+    this.props.history.goBack();
   },
 
   render() {
@@ -298,45 +300,45 @@ const UserForm = React.createClass({
           <Col lg={8}>
             <h2>Change password</h2>
             {user.read_only ?
-            <Col smOffset={3} sm={9}>
-              <Alert bsStyle="warning" role="alert">
-                Please edit your Graylog server configuration file to change the admin password.
-              </Alert>
-            </Col>
-            :
-              user.external ?
               <Col smOffset={3} sm={9}>
                 <Alert bsStyle="warning" role="alert">
+                Please edit your Graylog server configuration file to change the admin password.
+              </Alert>
+              </Col>
+            :
+              user.external ?
+                <Col smOffset={3} sm={9}>
+                  <Alert bsStyle="warning" role="alert">
                   This user was created from an external system and you can't change the password here.
                   Please contact an administrator for more information.
                 </Alert>
-              </Col>
+                </Col>
               :
-              <form className="form-horizontal" style={{ marginTop: 10 }} onSubmit={this._changePassword}>
-                {requiresOldPassword &&
+                <form className="form-horizontal" style={{ marginTop: 10 }} onSubmit={this._changePassword}>
+                  {requiresOldPassword &&
                   <Input ref="old_password" name="old_password" id="old_password" type="password" maxLength={100}
                          labelClassName="col-sm-3" wrapperClassName="col-sm-9"
                          label="Old Password" required />
                 }
-                <Input ref="password" name="password" id="password" type="password" maxLength={100}
+                  <Input ref="password" name="password" id="password" type="password" maxLength={100}
                        labelClassName="col-sm-3" wrapperClassName="col-sm-9"
                        label="New Password" required minLength="6"
                        help="Passwords must be at least 6 characters long. We recommend using a strong password."
                        onChange={this._onPasswordChange} />
 
-                <Input ref="password_repeat" name="password_repeat" id="password_repeat" type="password" maxLength={100}
+                  <Input ref="password_repeat" name="password_repeat" id="password_repeat" type="password" maxLength={100}
                        labelClassName="col-sm-3" wrapperClassName="col-sm-9"
                        label="Repeat Password" required minLength="6" onChange={this._onPasswordChange} />
 
-                <div className="form-group">
-                  <Col smOffset={3} sm={9}>
-                    <Button bsStyle="primary" type="submit" className="save-button-margin">
+                  <div className="form-group">
+                    <Col smOffset={3} sm={9}>
+                      <Button bsStyle="primary" type="submit" className="save-button-margin">
                       Update Password
                     </Button>
-                    <Button onClick={this._onCancel}>Cancel</Button>
-                  </Col>
-                </div>
-              </form>
+                      <Button onClick={this._onCancel}>Cancel</Button>
+                    </Col>
+                  </div>
+                </form>
             }
           </Col>
         </Row>

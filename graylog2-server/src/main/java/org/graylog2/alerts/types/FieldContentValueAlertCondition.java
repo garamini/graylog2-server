@@ -22,7 +22,6 @@ import com.google.inject.assistedinject.Assisted;
 import com.google.inject.assistedinject.AssistedInject;
 import org.graylog2.Configuration;
 import org.graylog2.alerts.AbstractAlertCondition;
-import org.graylog2.indexer.InvalidRangeFormatException;
 import org.graylog2.indexer.results.ResultMessage;
 import org.graylog2.indexer.results.SearchResult;
 import org.graylog2.indexer.searches.Searches;
@@ -46,9 +45,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Strings.isNullOrEmpty;
-
 public class FieldContentValueAlertCondition extends AbstractAlertCondition {
     private static final Logger LOG = LoggerFactory.getLogger(FieldContentValueAlertCondition.class);
 
@@ -58,6 +54,7 @@ public class FieldContentValueAlertCondition extends AbstractAlertCondition {
     private final String value;
 
     public interface Factory extends AlertCondition.Factory {
+        @Override
         FieldContentValueAlertCondition create(Stream stream,
                                                @Assisted("id") String id,
                                                DateTime createdAt,
@@ -65,7 +62,10 @@ public class FieldContentValueAlertCondition extends AbstractAlertCondition {
                                                Map<String, Object> parameters,
                                                @Assisted("title") @Nullable String title);
 
+        @Override
         Config config();
+
+        @Override
         Descriptor descriptor();
     }
 
@@ -88,10 +88,9 @@ public class FieldContentValueAlertCondition extends AbstractAlertCondition {
     public static class Descriptor extends AlertCondition.Descriptor {
         public Descriptor() {
             super(
-                "Field Content Value Alert Condition",
+                "Field Content Alert Condition",
                 "https://www.graylog.org/",
-                "This condition is triggered when the aggregated value of a field is higher/lower than a defined "
-                + "threshold for a given time range."
+                "This condition is triggered when the content of messages is equal to a defined value."
             );
         }
     }
@@ -110,9 +109,6 @@ public class FieldContentValueAlertCondition extends AbstractAlertCondition {
         this.configuration = configuration;
         this.field = (String) parameters.get("field");
         this.value = (String) parameters.get("value");
-
-        checkArgument(!isNullOrEmpty(field), "\"field\" must not be empty.");
-        checkArgument(!isNullOrEmpty(value), "\"value\" must not be empty.");
     }
 
     @Override
@@ -135,7 +131,7 @@ public class FieldContentValueAlertCondition extends AbstractAlertCondition {
                 RelativeRange.create(configuration.getAlertCheckInterval()),
                 searchLimit,
                 0,
-                new Sorting("timestamp", Sorting.Direction.DESC)
+                new Sorting(Message.FIELD_TIMESTAMP, Sorting.Direction.DESC)
             );
 
             final List<MessageSummary> summaries;
@@ -165,15 +161,14 @@ public class FieldContentValueAlertCondition extends AbstractAlertCondition {
             // cannot happen lol
             LOG.error("Invalid timerange.", e);
             return null;
-        } catch (InvalidRangeFormatException e) {
-            // lol same here
-            LOG.error("Invalid timerange format.", e);
-            return null;
         }
     }
 
     @Override
     public String getDescription() {
-        return "field: " + field + ", value: " + value;
+        return "field: " + field
+                + ", value: " + value
+                + ", grace: " + grace
+                + ", repeat notifications: " + repeatNotifications;
     }
 }

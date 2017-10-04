@@ -32,6 +32,8 @@ import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
@@ -176,7 +178,7 @@ public class ToolsTest {
     }
 
     @Test
-    public void testAsSortedList() {
+    public void testAsSortedSet() {
         List<Integer> sortMe = Lists.newArrayList();
         sortMe.add(0);
         sortMe.add(2);
@@ -186,7 +188,7 @@ public class ToolsTest {
         sortMe.add(25);
         sortMe.add(11);
 
-        List<Integer> expected = Lists.newArrayList();
+        SortedSet<Integer> expected = new TreeSet<>();
         expected.add(0);
         expected.add(1);
         expected.add(2);
@@ -195,7 +197,7 @@ public class ToolsTest {
         expected.add(11);
         expected.add(25);
 
-        assertEquals(expected, Tools.asSortedList(sortMe));
+        assertEquals(expected, Tools.asSortedSet(sortMe));
     }
 
     @Test
@@ -215,7 +217,7 @@ public class ToolsTest {
     }
 
     @Test
-    public void testGetInt() throws Exception {
+    public void testGetDouble() throws Exception {
         assertEquals(null, Tools.getDouble(null));
         assertEquals(null, Tools.getDouble(""));
 
@@ -239,6 +241,26 @@ public class ToolsTest {
                 return "42.23";
             }
         }), 0);
+    }
+
+    @Test
+    public void testGetNumberForDifferentFormats() {
+        assertEquals(Tools.getNumber(1, null).intValue(), 1);
+        assertEquals(Tools.getNumber(1, null).doubleValue(), 1.0, 0.0);
+
+        assertEquals(Tools.getNumber(42.23, null).intValue(), 42);
+        assertEquals(Tools.getNumber(42.23, null).doubleValue(), 42.23, 0.0);
+
+        assertEquals(Tools.getNumber("17", null).intValue(), 17);
+        assertEquals(Tools.getNumber("17", null).doubleValue(), 17.0, 0.0);
+
+        assertEquals(Tools.getNumber("23.42", null).intValue(), 23);
+        assertEquals(Tools.getNumber("23.42", null).doubleValue(), 23.42, 0.0);
+
+        assertNull(Tools.getNumber(null, null));
+        assertNull(Tools.getNumber(null, null));
+        assertEquals(Tools.getNumber(null, 1).intValue(), 1);
+        assertEquals(Tools.getNumber(null, 1).doubleValue(), 1.0, 0.0);
     }
 
     @Test

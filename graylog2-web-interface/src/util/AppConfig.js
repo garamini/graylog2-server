@@ -1,20 +1,24 @@
 const AppConfig = {
   gl2ServerUrl() {
-    return window.appConfig.gl2ServerUrl;
+    return this.appConfig().gl2ServerUrl;
   },
 
   gl2AppPathPrefix() {
-    return window.appConfig.gl2AppPathPrefix;
+    return this.appConfig().gl2AppPathPrefix;
   },
 
   gl2DevMode() {
     // The DEVELOPMENT variable will be set by webpack via the DefinePlugin.
     // eslint-disable-next-line no-undef
-    return typeof(DEVELOPMENT) !== 'undefined' && DEVELOPMENT;
+    return typeof (DEVELOPMENT) !== 'undefined' && DEVELOPMENT;
   },
 
   rootTimeZone() {
-    return window.appConfig.rootTimeZone;
+    return this.appConfig().rootTimeZone;
+  },
+
+  appConfig() {
+    return window.appConfig || {};
   },
 };
 

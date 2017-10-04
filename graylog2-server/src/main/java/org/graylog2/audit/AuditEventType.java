@@ -22,11 +22,12 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.auto.value.AutoValue;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
+import org.graylog.autovalue.WithBeanGetter;
 
 import javax.annotation.Nonnull;
 import java.util.List;
 
-import static org.elasticsearch.common.Strings.isNullOrEmpty;
+import static com.google.common.base.Strings.isNullOrEmpty;
 
 /**
  * Represents an audit event with namespace, object and action.
@@ -44,6 +45,7 @@ import static org.elasticsearch.common.Strings.isNullOrEmpty;
  */
 @JsonAutoDetect
 @AutoValue
+@WithBeanGetter
 public abstract class AuditEventType {
     private static final String FIELD_NAMESPACE = "namespace";
     private static final String FIELD_OBJECT = "object";

@@ -17,6 +17,7 @@
 package org.graylog2.rest.resources.streams.alerts;
 
 import com.codahale.metrics.annotation.Timed;
+import com.google.common.base.Strings;
 import com.google.common.base.Throwables;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -28,11 +29,9 @@ import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import org.apache.commons.mail.EmailException;
 import org.apache.shiro.authz.annotation.RequiresAuthentication;
-import org.elasticsearch.common.Strings;
 import org.graylog2.alarmcallbacks.AlarmCallbackConfiguration;
 import org.graylog2.alarmcallbacks.AlarmCallbackConfigurationService;
 import org.graylog2.alarmcallbacks.AlarmCallbackFactory;
-import org.graylog2.alarmcallbacks.EmailAlarmCallback;
 import org.graylog2.alerts.AbstractAlertCondition;
 import org.graylog2.alerts.Alert;
 import org.graylog2.alerts.AlertService;
@@ -99,19 +98,16 @@ public class StreamAlertResource extends RestResource {
     private final StreamService streamService;
     private final AlertService alertService;
     private final AlarmCallbackConfigurationService alarmCallbackConfigurationService;
-    private final EmailAlarmCallback emailAlarmCallback;
     private final AlarmCallbackFactory alarmCallbackFactory;
 
     @Inject
     public StreamAlertResource(StreamService streamService,
                                AlertService alertService,
                                AlarmCallbackConfigurationService alarmCallbackConfigurationService,
-                               EmailAlarmCallback emailAlarmCallback,
                                AlarmCallbackFactory alarmCallbackFactory) {
         this.streamService = streamService;
         this.alertService = alertService;
         this.alarmCallbackConfigurationService = alarmCallbackConfigurationService;
-        this.emailAlarmCallback = emailAlarmCallback;
         this.alarmCallbackFactory = alarmCallbackFactory;
     }
 
@@ -127,7 +123,7 @@ public class StreamAlertResource extends RestResource {
                                  @PathParam("streamId") String streamId,
                                  @ApiParam(name = "since", value = "Optional parameter to define a lower date boundary. (UNIX timestamp)")
                                  @QueryParam("since") @DefaultValue("0") @Min(0) int sinceTs,
-                                 @ApiParam(name = "limit", value = "Maximum number of alerts to return.", required = false)
+                                 @ApiParam(name = "limit", value = "Maximum number of alerts to return.")
                                  @QueryParam("limit") @DefaultValue("300") @Min(1) int limit) throws NotFoundException {
         checkPermission(RestPermissions.STREAMS_READ, streamId);
 
@@ -219,9 +215,11 @@ public class StreamAlertResource extends RestResource {
     @ApiOperation(value = "Add an alert receiver")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Stream not found."),
-            @ApiResponse(code = 400, message = "Invalid ObjectId.")
+            @ApiResponse(code = 400, message = "Invalid ObjectId."),
+            @ApiResponse(code = 400, message = "Stream has no email alarm callbacks.")
     })
     @AuditEvent(type = AuditEventTypes.ALERT_RECEIVER_CREATE)
+    @Deprecated
     public Response addReceiver(
             @ApiParam(name = "streamId", value = "The stream id this new alert condition belongs to.", required = true)
             @PathParam("streamId") String streamId,
@@ -233,7 +231,7 @@ public class StreamAlertResource extends RestResource {
         checkPermission(RestPermissions.STREAMS_EDIT, streamId);
         checkArgument(!Strings.isNullOrEmpty(entity));
 
-        if (type == null || (!type.equals("users") && !type.equals("emails"))) {
+        if (type == null || !"users".equals(type) && !"emails".equals(type)) {
             final String msg = "No such type: [" + type + "]";
             LOG.warn(msg);
             throw new BadRequestException(msg);
@@ -245,10 +243,10 @@ public class StreamAlertResource extends RestResource {
         final URI streamAlertUri = getUriBuilderToSelf().path(StreamAlertResource.class).build(streamId);
 
         // Maybe the list already contains this receiver?
-        if (stream.getAlertReceivers().containsKey(type) || stream.getAlertReceivers().get(type) != null) {
-            if (stream.getAlertReceivers().get(type).contains(entity)) {
-                return Response.created(streamAlertUri).build();
-            }
+        if (stream.getAlertReceivers().containsKey(type)
+                || stream.getAlertReceivers().get(type) != null
+                && stream.getAlertReceivers().get(type).contains(entity)) {
+            return Response.created(streamAlertUri).build();
         }
 
         streamService.addAlertReceiver(stream, type, entity);
@@ -262,9 +260,11 @@ public class StreamAlertResource extends RestResource {
     @ApiOperation(value = "Remove an alert receiver")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Stream not found."),
-            @ApiResponse(code = 400, message = "Invalid ObjectId.")
+            @ApiResponse(code = 400, message = "Invalid ObjectId."),
+            @ApiResponse(code = 400, message = "Stream has no email alarm callbacks.")
     })
     @AuditEvent(type = AuditEventTypes.ALERT_RECEIVER_DELETE)
+    @Deprecated
     public void removeReceiver(
             @ApiParam(name = "streamId", value = "The stream id this new alert condition belongs to.", required = true) @PathParam("streamId") String streamId,
             @ApiParam(name = "entity", value = "Name/ID of user or email address to remove from alert receivers.", required = true) @QueryParam("entity") String entity,
@@ -287,27 +287,30 @@ public class StreamAlertResource extends RestResource {
     @ApiOperation(value = "Send a test mail for a given stream")
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "Stream not found."),
-            @ApiResponse(code = 400, message = "Invalid ObjectId.")
+            @ApiResponse(code = 400, message = "Invalid ObjectId."),
+            @ApiResponse(code = 400, message = "Stream has no alarm callbacks")
     })
     @NoAuditEvent("only used to test alert emails")
-    public void sendDummyAlert(@ApiParam(name = "streamId", value = "The stream id the dummy alert should be sent for.", required = true)
+    public void sendDummyAlert(@ApiParam(name = "streamId", value = "The stream id the test alert should be sent for.", required = true)
                                @PathParam("streamId") String streamId)
             throws TransportConfigurationException, EmailException, NotFoundException {
         checkPermission(RestPermissions.STREAMS_EDIT, streamId);
 
         final Stream stream = streamService.load(streamId);
 
-        final DummyAlertCondition dummyAlertCondition = new DummyAlertCondition(stream, null, Tools.nowUTC(), getSubject().getPrincipal().toString(), Collections.emptyMap(), "Dummy Alert");
+        final DummyAlertCondition dummyAlertCondition = new DummyAlertCondition(stream, null, Tools.nowUTC(), getSubject().getPrincipal().toString(), Collections.emptyMap(), "Test Alert");
         try {
             AbstractAlertCondition.CheckResult checkResult = dummyAlertCondition.runCheck();
             List<AlarmCallbackConfiguration> callConfigurations = alarmCallbackConfigurationService.getForStream(stream);
-            if (callConfigurations.size() > 0)
-                for (AlarmCallbackConfiguration configuration : callConfigurations) {
-                    AlarmCallback alarmCallback = alarmCallbackFactory.create(configuration);
-                    alarmCallback.call(stream, checkResult);
-                }
-            else {
-                emailAlarmCallback.call(stream, checkResult);
+            if (callConfigurations.size() == 0) {
+                final String message = "Stream has no alarm callbacks, cannot send test alert.";
+                LOG.warn(message);
+                throw new BadRequestException(message);
+            }
+
+            for (AlarmCallbackConfiguration configuration : callConfigurations) {
+                AlarmCallback alarmCallback = alarmCallbackFactory.create(configuration);
+                alarmCallback.call(stream, checkResult);
             }
         } catch (AlarmCallbackException | ClassNotFoundException | AlarmCallbackConfigurationException e) {
             throw new InternalServerErrorException(e.getMessage(), e);
@@ -322,7 +325,9 @@ public class StreamAlertResource extends RestResource {
                         alert.getStreamId(),
                         alert.getDescription(),
                         alert.getConditionParameters(),
-                        alert.getTriggeredAt()))
+                        alert.getTriggeredAt(),
+                        alert.getResolvedAt(),
+                        alert.isInterval()))
                 .collect(Collectors.toList());
     }
 }

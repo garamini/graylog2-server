@@ -62,7 +62,9 @@ public class UserImpl extends PersistedImpl implements User {
 
     public interface Factory {
         UserImpl create(final Map<String, Object> fields);
+
         UserImpl create(final ObjectId id, final Map<String, Object> fields);
+
         LocalAdminUser createLocalAdminUser(String adminRoleObjectId);
     }
 
@@ -70,7 +72,6 @@ public class UserImpl extends PersistedImpl implements User {
 
     private static final Map<String, Object> DEFAULT_PREFERENCES = new ImmutableMap.Builder<String, Object>()
             .put("updateUnfocussed", false)
-            .put("disableExpensiveUpdates", false)
             .put("enableSmartSearch", true)
             .build();
 
@@ -178,7 +179,7 @@ public class UserImpl extends PersistedImpl implements User {
         final List<String> perms = Lists.newArrayList(permissions);
         // Do not store the dynamic user self edit permissions
         perms.removeAll(this.permissions.userSelfEditPermissions(getName()));
-        fields.put(PERMISSIONS, permissions);
+        fields.put(PERMISSIONS, perms);
     }
 
     @Override
@@ -186,7 +187,7 @@ public class UserImpl extends PersistedImpl implements User {
     public Map<String, Object> getPreferences() {
         final Map<String, Object> preferences = (Map<String, Object>) fields.get(PREFERENCES);
 
-        return (preferences == null || preferences.isEmpty()) ? DEFAULT_PREFERENCES : preferences;
+        return preferences == null || preferences.isEmpty() ? DEFAULT_PREFERENCES : preferences;
     }
 
     @Override
@@ -315,9 +316,8 @@ public class UserImpl extends PersistedImpl implements User {
 
     @Override
     public void setStartpage(final String type, final String id) {
-        if (type != null && id != null) {
-            this.setStartpage(Startpage.create(type, id));
-        }
+        final Startpage nextStartpage = type != null && id != null ? Startpage.create(type, id) : null;
+        this.setStartpage(nextStartpage);
     }
 
     @Override
@@ -336,8 +336,8 @@ public class UserImpl extends PersistedImpl implements User {
 
         @AssistedInject
         LocalAdminUser(PasswordAlgorithmFactory passwordAlgorithmFactory,
-                              Configuration configuration,
-                              @Assisted String adminRoleObjectId) {
+                       Configuration configuration,
+                       @Assisted String adminRoleObjectId) {
             super(passwordAlgorithmFactory, null, null, Collections.<String, Object>emptyMap());
             this.configuration = configuration;
             this.roles = ImmutableSet.of(adminRoleObjectId);

@@ -17,7 +17,6 @@
 package org.graylog2.streams;
 
 import com.fasterxml.jackson.annotation.JsonValue;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -28,6 +27,7 @@ import org.graylog2.database.validators.DateValidator;
 import org.graylog2.database.validators.FilledStringValidator;
 import org.graylog2.database.validators.MapValidator;
 import org.graylog2.database.validators.OptionalStringValidator;
+import org.graylog2.indexer.IndexSet;
 import org.graylog2.plugin.Tools;
 import org.graylog2.plugin.database.validators.Validator;
 import org.graylog2.plugin.streams.Output;
@@ -35,12 +35,11 @@ import org.graylog2.plugin.streams.Stream;
 import org.graylog2.plugin.streams.StreamRule;
 import org.joda.time.DateTime;
 
+import javax.annotation.Nullable;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import static com.google.common.base.MoreObjects.firstNonNull;
 
 /**
  * Representing a single stream from the streams collection. Also provides method
@@ -59,28 +58,41 @@ public class StreamImpl extends PersistedImpl implements Stream {
     public static final String FIELD_CREATOR_USER_ID = "creator_user_id";
     public static final String FIELD_MATCHING_TYPE = "matching_type";
     public static final String FIELD_DEFAULT_STREAM = "is_default_stream";
+    public static final String FIELD_REMOVE_MATCHES_FROM_DEFAULT_STREAM = "remove_matches_from_default_stream";
+    public static final String FIELD_INDEX_SET_ID = "index_set_id";
     public static final String EMBEDDED_ALERT_CONDITIONS = "alert_conditions";
 
     private final List<StreamRule> streamRules;
     private final Set<Output> outputs;
+    private final IndexSet indexSet;
 
     public StreamImpl(Map<String, Object> fields) {
         super(fields);
         this.streamRules = null;
         this.outputs = null;
+        this.indexSet = null;
+    }
+
+    public StreamImpl(Map<String, Object> fields, IndexSet indexSet) {
+        super(fields);
+        this.streamRules = null;
+        this.outputs = null;
+        this.indexSet = indexSet;
     }
 
     protected StreamImpl(ObjectId id, Map<String, Object> fields) {
         super(id, fields);
         this.streamRules = null;
         this.outputs = null;
+        this.indexSet = null;
     }
 
-    public StreamImpl(ObjectId id, Map<String, Object> fields, List<StreamRule> streamRules, Set<Output> outputs) {
+    public StreamImpl(ObjectId id, Map<String, Object> fields, List<StreamRule> streamRules, Set<Output> outputs, @Nullable IndexSet indexSet) {
         super(id, fields);
 
         this.streamRules = streamRules;
         this.outputs = outputs;
+        this.indexSet = indexSet;
     }
 
     @Override
@@ -141,7 +153,7 @@ public class StreamImpl extends PersistedImpl implements Stream {
     @Override
     public Boolean isPaused() {
         Boolean disabled = getDisabled();
-        return (disabled != null && disabled);
+        return disabled != null && disabled;
     }
 
     @Override
@@ -167,10 +179,13 @@ public class StreamImpl extends PersistedImpl implements Stream {
         result.remove("_id");
         result.put("id", ((ObjectId) fields.get("_id")).toHexString());
         result.remove(FIELD_CREATED_AT);
-        result.put(FIELD_CREATED_AT, (Tools.getISO8601String((DateTime) fields.get(FIELD_CREATED_AT))));
+        result.put(FIELD_CREATED_AT, Tools.getISO8601String((DateTime) fields.get(FIELD_CREATED_AT)));
         result.put(FIELD_RULES, streamRules);
         result.put(FIELD_OUTPUTS, outputs);
         result.put(FIELD_MATCHING_TYPE, getMatchingType());
+        result.put(FIELD_DEFAULT_STREAM, isDefaultStream());
+        result.put(FIELD_REMOVE_MATCHES_FROM_DEFAULT_STREAM, getRemoveMatchesFromDefaultStream());
+        result.put(FIELD_INDEX_SET_ID, getIndexSetId());
         return result;
     }
 
@@ -181,12 +196,13 @@ public class StreamImpl extends PersistedImpl implements Stream {
                 .put(FIELD_CREATOR_USER_ID, new FilledStringValidator())
                 .put(FIELD_CREATED_AT, new DateValidator())
                 .put(FIELD_CONTENT_PACK, new OptionalStringValidator())
+                .put(FIELD_INDEX_SET_ID, new FilledStringValidator())
                 .build();
     }
 
     @Override
     public Map<String, Validator> getEmbeddedValidations(String key) {
-        if (key.equals(EMBEDDED_ALERT_CONDITIONS)) {
+        if (EMBEDDED_ALERT_CONDITIONS.equals(key)) {
             return ImmutableMap.of(
                     "id", new FilledStringValidator(),
                     "parameters", new MapValidator());
@@ -197,11 +213,10 @@ public class StreamImpl extends PersistedImpl implements Stream {
 
     @Override
     public Map<String, List<String>> getAlertReceivers() {
-        if (!fields.containsKey(FIELD_ALERT_RECEIVERS)) {
-            return Collections.emptyMap();
-        }
-
-        return (Map<String, List<String>>) fields.get(FIELD_ALERT_RECEIVERS);
+        @SuppressWarnings("unchecked")
+        final Map<String, List<String>> alertReceivers =
+                (Map<String, List<String>>) fields.getOrDefault(FIELD_ALERT_RECEIVERS, Collections.emptyMap());
+        return alertReceivers;
     }
 
     @Override
@@ -217,17 +232,46 @@ public class StreamImpl extends PersistedImpl implements Stream {
 
     @Override
     public void setMatchingType(MatchingType matchingType) {
-        Preconditions.checkNotNull(matchingType);
         fields.put(FIELD_MATCHING_TYPE, matchingType.toString());
     }
 
     @Override
     public boolean isDefaultStream() {
-        return (boolean) firstNonNull(fields.get(FIELD_DEFAULT_STREAM), false);
+        return (boolean) fields.getOrDefault(FIELD_DEFAULT_STREAM, false);
     }
 
     @Override
     public void setDefaultStream(boolean defaultStream) {
         fields.put(FIELD_DEFAULT_STREAM, defaultStream);
+    }
+
+    @Override
+    public boolean getRemoveMatchesFromDefaultStream() {
+        return (boolean) fields.getOrDefault(FIELD_REMOVE_MATCHES_FROM_DEFAULT_STREAM, false);
+    }
+
+    @Override
+    public void setRemoveMatchesFromDefaultStream(boolean removeMatchesFromDefaultStream) {
+        fields.put(FIELD_REMOVE_MATCHES_FROM_DEFAULT_STREAM, removeMatchesFromDefaultStream);
+    }
+
+    @Override
+    public IndexSet getIndexSet() {
+        // The indexSet might be null because of backwards compatibility but it shouldn't be for regular streams.
+        // Throw an exception if indexSet is not set to avoid losing messages!
+        if (indexSet == null) {
+            throw new IllegalStateException("index set must not be null! (stream id=" + getId() + " title=\"" + getTitle() + "\")");
+        }
+        return indexSet;
+    }
+
+    @Override
+    public String getIndexSetId() {
+        return (String) fields.get(FIELD_INDEX_SET_ID);
+    }
+
+    @Override
+    public void setIndexSetId(String indexSetId) {
+        fields.put(FIELD_INDEX_SET_ID, indexSetId);
     }
 }

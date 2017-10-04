@@ -20,12 +20,14 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.auto.value.AutoValue;
+import com.google.common.collect.ImmutableMap;
 import org.graylog2.database.CollectionName;
+import org.graylog2.plugin.alarms.AlertCondition;
 import org.joda.time.DateTime;
 import org.mongojack.Id;
 import org.mongojack.ObjectId;
 
-import java.util.Date;
+import javax.annotation.Nullable;
 import java.util.Map;
 
 @AutoValue
@@ -38,6 +40,8 @@ public abstract class AlertImpl implements Alert {
     static final String FIELD_DESCRIPTION = "description";
     static final String FIELD_CONDITION_PARAMETERS = "condition_parameters";
     static final String FIELD_TRIGGERED_AT = "triggered_at";
+    static final String FIELD_RESOLVED_AT = "resolved_at";
+    static final String FIELD_IS_INTERVAL = "is_interval";
 
     @JsonProperty(FIELD_ID)
     @Override
@@ -57,6 +61,11 @@ public abstract class AlertImpl implements Alert {
     @Override
     public abstract DateTime getTriggeredAt();
 
+    @JsonProperty(FIELD_RESOLVED_AT)
+    @Override
+    @Nullable
+    public abstract DateTime getResolvedAt();
+
     @JsonProperty(FIELD_DESCRIPTION)
     @Override
     public abstract String getDescription();
@@ -65,42 +74,67 @@ public abstract class AlertImpl implements Alert {
     @Override
     public abstract Map<String, Object> getConditionParameters();
 
+    @JsonProperty(FIELD_IS_INTERVAL)
+    @Override
+    public abstract boolean isInterval();
+
     static Builder builder() {
         return new AutoValue_AlertImpl.Builder();
     }
+
+    public abstract Builder toBuilder();
 
     @JsonCreator
     public static AlertImpl create(@JsonProperty(FIELD_ID) @ObjectId @Id String id,
                                    @JsonProperty(FIELD_STREAM_ID) String streamId,
                                    @JsonProperty(FIELD_CONDITION_ID) String conditionId,
-                                   @JsonProperty(FIELD_TRIGGERED_AT) Date triggeredAt,
+                                   @JsonProperty(FIELD_TRIGGERED_AT) DateTime triggeredAt,
+                                   @JsonProperty(FIELD_RESOLVED_AT) @Nullable DateTime resolvedAt,
                                    @JsonProperty(FIELD_DESCRIPTION) String description,
-                                   @JsonProperty(FIELD_CONDITION_PARAMETERS) Map<String, Object> conditionParameters) {
+                                   @JsonProperty(FIELD_CONDITION_PARAMETERS) Map<String, Object> conditionParameters,
+                                   @JsonProperty(FIELD_IS_INTERVAL) boolean isInterval) {
         return builder()
-            .id(id)
-            .streamId(streamId)
-            .conditionId(conditionId)
-            .triggeredAt(new DateTime(triggeredAt))
-            .description(description)
-            .conditionParameters(conditionParameters)
-            .build();
+                .id(id)
+                .streamId(streamId)
+                .conditionId(conditionId)
+                .triggeredAt(triggeredAt)
+                .resolvedAt(resolvedAt)
+                .description(description)
+                .conditionParameters(conditionParameters)
+                .interval(isInterval)
+                .build();
     }
 
+    public static AlertImpl fromCheckResult(AlertCondition.CheckResult checkResult) {
+        return create(new org.bson.types.ObjectId().toHexString(),
+                checkResult.getTriggeredCondition().getStream().getId(),
+                checkResult.getTriggeredCondition().getId(),
+                checkResult.getTriggeredAt(),
+                null,
+                checkResult.getResultDescription(),
+                ImmutableMap.copyOf(checkResult.getTriggeredCondition().getParameters()),
+                true);
+    }
+
+
     @AutoValue.Builder
-    public interface Builder extends Alert.Builder {
+    public interface Builder {
         Builder id(String id);
-        @Override
+
         Builder streamId(String streamId);
-        @Override
+
         Builder conditionId(String conditionId);
-        @Override
+
         Builder triggeredAt(DateTime triggeredAt);
-        @Override
+
+        Builder resolvedAt(DateTime resolvedAt);
+
         Builder description(String description);
-        @Override
+
         Builder conditionParameters(Map<String, Object> conditionParameters);
 
-        @Override
+        Builder interval(boolean isInterval);
+
         AlertImpl build();
     }
 }

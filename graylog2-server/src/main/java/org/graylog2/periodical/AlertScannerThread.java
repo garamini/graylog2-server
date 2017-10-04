@@ -17,13 +17,7 @@
 package org.graylog2.periodical;
 
 import org.graylog2.Configuration;
-import org.graylog2.alarmcallbacks.AlarmCallbackConfigurationService;
-import org.graylog2.alarmcallbacks.AlarmCallbackFactory;
-import org.graylog2.alarmcallbacks.AlarmCallbackHistoryService;
-import org.graylog2.alarmcallbacks.EmailAlarmCallback;
 import org.graylog2.alerts.AlertScanner;
-import org.graylog2.alerts.AlertService;
-import org.graylog2.initializers.IndexerSetupService;
 import org.graylog2.plugin.periodical.Periodical;
 import org.graylog2.plugin.streams.Stream;
 import org.graylog2.streams.StreamService;
@@ -37,43 +31,20 @@ public class AlertScannerThread extends Periodical {
     private static final Logger LOG = LoggerFactory.getLogger(AlertScannerThread.class);
 
     private final StreamService streamService;
-    private final AlarmCallbackConfigurationService alarmCallbackConfigurationService;
-    private final AlarmCallbackFactory alarmCallbackFactory;
-    private final EmailAlarmCallback emailAlarmCallback;
-    private final IndexerSetupService indexerSetupService;
-    private final AlertService alertService;
     private final Configuration configuration;
-    private final AlarmCallbackHistoryService alarmCallbackHistoryService;
     private final AlertScanner alertScanner;
 
     @Inject
-    public AlertScannerThread(final AlertService alertService,
-                              final StreamService streamService,
-                              final AlarmCallbackConfigurationService alarmCallbackConfigurationService,
-                              final AlarmCallbackFactory alarmCallbackFactory,
-                              final EmailAlarmCallback emailAlarmCallback,
-                              final IndexerSetupService indexerSetupService,
+    public AlertScannerThread(final StreamService streamService,
                               final Configuration configuration,
-                              final AlarmCallbackHistoryService alarmCallbackHistoryService,
                               final AlertScanner alertScanner) {
-        this.alertService = alertService;
         this.streamService = streamService;
-        this.alarmCallbackConfigurationService = alarmCallbackConfigurationService;
-        this.alarmCallbackFactory = alarmCallbackFactory;
-        this.emailAlarmCallback = emailAlarmCallback;
-        this.indexerSetupService = indexerSetupService;
         this.configuration = configuration;
-        this.alarmCallbackHistoryService = alarmCallbackHistoryService;
         this.alertScanner = alertScanner;
     }
 
     @Override
     public void doRun() {
-        if (!indexerSetupService.isRunning()) {
-            LOG.error("Indexer is not running, not checking streams for alerts.");
-            return;
-        }
-
         LOG.debug("Running alert checks.");
         final List<Stream> alertedStreams = streamService.loadAllWithConfiguredAlertConditions();
 

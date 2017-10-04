@@ -1,7 +1,9 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import Reflux from 'reflux';
-import { Button, Col, Input, Row } from 'react-bootstrap';
+import { Button, Col, Row } from 'react-bootstrap';
 
+import { Input } from 'components/bootstrap';
 import { Select } from 'components/common';
 import { BooleanField, DropdownField, NumberField, TextField } from 'components/configurationforms';
 
@@ -18,8 +20,8 @@ const InputsStore = StoreProvider.getStore('Inputs');
 
 const RawMessageLoader = React.createClass({
   propTypes: {
-    onMessageLoaded: React.PropTypes.func.isRequired,
-    inputIdSelector: React.PropTypes.bool,
+    onMessageLoaded: PropTypes.func.isRequired,
+    inputIdSelector: PropTypes.bool,
   },
 
   mixins: [Reflux.connect(CodecTypesStore), Reflux.connect(InputsStore)],
@@ -57,7 +59,7 @@ const RawMessageLoader = React.createClass({
     this.setState({ loading: true });
     const promise = MessagesActions.loadRawMessage.triggerPromise(message, remoteAddress || this.DEFAULT_REMOTE_ADDRESS,
       codec, codecConfiguration);
-    promise.then(loadedMessage => {
+    promise.then((loadedMessage) => {
       this.props.onMessageLoaded(
         loadedMessage,
         {
@@ -89,7 +91,7 @@ const RawMessageLoader = React.createClass({
 
     return codecTypesIds
       .filter(id => id !== 'random-http-msg') // Skip Random HTTP codec, as nobody wants to enter a raw random message.
-      .map(id => {
+      .map((id) => {
         const name = this.state.codecTypes[id].name;
         // Add id as label on codecs not having a descriptor name
         return { value: id, label: name === '' ? id : name };
@@ -108,7 +110,7 @@ const RawMessageLoader = React.createClass({
     }
 
     return inputIds
-      .map(id => {
+      .map((id) => {
         const inputId = this.state.inputs[id].id;
         const label = `${inputId} / ${this.state.inputs[id].title} / ${this.state.inputs[id].name}`;
         return { value: inputId, label: label };
@@ -173,7 +175,7 @@ const RawMessageLoader = React.createClass({
         <Input id="input" name="input" label={<span>Message input <small>(optional)</small></span>}
                help="Select the message input ID that should be assigned to the parsed message.">
           <Select id="input" placeholder="Select input" options={this._formatInputSelectOptions()}
-                  matchProp="label" onValueChange={this._onInputSelect} value={this.state.inputId} />
+                  matchProp="label" onChange={this._onInputSelect} value={this.state.inputId} />
         </Input>
       );
     }
@@ -196,7 +198,7 @@ const RawMessageLoader = React.createClass({
               <Input id="codec" name="codec" label="Message codec"
                      help="Select the codec that should be used to decode the message." required>
                 <Select id="codec" placeholder="Select codec" options={this._formatSelectOptions()}
-                        matchProp="label" onValueChange={this._onCodecSelect} value={this.state.codec} />
+                        matchProp="label" onChange={this._onCodecSelect} value={this.state.codec} />
               </Input>
               {codecConfigurationOptions}
             </fieldset>

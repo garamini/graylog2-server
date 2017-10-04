@@ -1,24 +1,26 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { Input } from 'react-bootstrap';
+import { Input } from 'components/bootstrap';
 
 import { DecoratedSidebarMessageField, SidebarMessageField } from 'components/search';
 
 const FieldAnalyzersSidebar = React.createClass({
   propTypes: {
-    fields: React.PropTypes.array,
-    fieldAnalyzers: React.PropTypes.array,
-    onFieldAnalyzer: React.PropTypes.func,
-    onFieldToggled: React.PropTypes.func,
-    maximumHeight: React.PropTypes.number,
-    predefinedFieldSelection: React.PropTypes.func,
-    result: React.PropTypes.object,
-    selectedFields: React.PropTypes.object,
-    shouldHighlight: React.PropTypes.bool,
-    showAllFields: React.PropTypes.bool,
-    showHighlightToggle: React.PropTypes.bool,
-    togglePageFields: React.PropTypes.func,
-    toggleShouldHighlight: React.PropTypes.func,
+    fields: PropTypes.array,
+    fieldAnalyzers: PropTypes.array,
+    onFieldAnalyzer: PropTypes.func,
+    onFieldToggled: PropTypes.func,
+    maximumHeight: PropTypes.number,
+    predefinedFieldSelection: PropTypes.func,
+    result: PropTypes.object,
+    searchConfig: PropTypes.object.isRequired,
+    selectedFields: PropTypes.object,
+    shouldHighlight: PropTypes.bool,
+    showAllFields: PropTypes.bool,
+    showHighlightToggle: PropTypes.bool,
+    togglePageFields: PropTypes.func,
+    toggleShouldHighlight: PropTypes.func,
   },
 
   getInitialState() {
@@ -104,7 +106,7 @@ const FieldAnalyzersSidebar = React.createClass({
     const decorationStats = this.props.result.decoration_stats;
     const decoratedFields = decorationStats ? [].concat(decorationStats.added_fields || [], decorationStats.changed_fields || []) : [];
     const messageFields = this.props.fields
-      .filter((field) => field.name.indexOf(this.state.fieldFilter) !== -1)
+      .filter(field => field.name.indexOf(this.state.fieldFilter) !== -1)
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((field) => {
         let messageField;
@@ -122,6 +124,7 @@ const FieldAnalyzersSidebar = React.createClass({
                                  fieldAnalyzers={this.props.fieldAnalyzers}
                                  onToggled={this.props.onFieldToggled}
                                  onFieldAnalyzer={this.props.onFieldAnalyzer}
+                                 searchConfig={this.props.searchConfig}
                                  selected={this.props.selectedFields.contains(field.name)} />
           );
         }
@@ -133,7 +136,7 @@ const FieldAnalyzersSidebar = React.createClass({
       shouldHighlightToggle = (
         <Input ref="highlightToggle" type="checkbox" bsSize="small" checked={this.props.shouldHighlight}
                onChange={this.props.toggleShouldHighlight} label="Highlight results"
-               groupClassName="result-highlight-control" />
+               wrapperClassName="result-highlight-control" />
       );
     }
 

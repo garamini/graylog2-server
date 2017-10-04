@@ -1,18 +1,13 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 
-const Spinner = React.createClass({
-  propTypes: {
-    text: React.PropTypes.string,
-  },
-  getDefaultProps() {
-    return { text: 'Loading...' };
-  },
-  getInitialState() {
-    return {};
-  },
-  render() {
-    return (<span><i className="fa fa-spin fa-spinner"/> {this.props.text}</span>);
-  },
-});
+const Spinner = ({ text }) => <span><i className="fa fa-spin fa-spinner" /> {text}</span>;
+
+Spinner.propTypes = {
+  text: PropTypes.string,
+};
+Spinner.defaultProps = {
+  text: 'Loading...',
+};
 
 export default Spinner;

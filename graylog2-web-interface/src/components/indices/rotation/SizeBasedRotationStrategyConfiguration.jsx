@@ -1,13 +1,14 @@
+import PropTypes from 'prop-types';
 import React from 'react';
-import { Input } from 'react-bootstrap';
+import { Input } from 'components/bootstrap';
 
 import NumberUtils from 'util/NumberUtils';
 
 const SizeBasedRotationStrategyConfiguration = React.createClass({
   propTypes: {
-    config: React.PropTypes.object.isRequired,
-    jsonSchema: React.PropTypes.object.isRequired,
-    updateConfig: React.PropTypes.func.isRequired,
+    config: PropTypes.object.isRequired,
+    jsonSchema: PropTypes.object.isRequired,
+    updateConfig: PropTypes.func.isRequired,
   },
 
   getInitialState() {
@@ -41,7 +42,6 @@ const SizeBasedRotationStrategyConfiguration = React.createClass({
                  value={this.state.max_size}
                  help="Maximum size of an index before it gets rotated"
                  addonAfter={this._formatSize()}
-                 autoFocus
                  required />
         </fieldset>
       </div>

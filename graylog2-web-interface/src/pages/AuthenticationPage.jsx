@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Row, Col } from 'react-bootstrap';
 
@@ -14,10 +15,10 @@ import AuthenticationComponent from 'components/authentication/AuthenticationCom
 const AuthenticationPage = React.createClass({
 
   propTypes: {
-    children: React.PropTypes.object,
-    location: React.PropTypes.object.isRequired,
-    params: React.PropTypes.object.isRequired,
-    history: React.PropTypes.object.isRequired,
+    children: PropTypes.object,
+    location: PropTypes.object.isRequired,
+    params: PropTypes.object.isRequired,
+    history: PropTypes.object.isRequired,
   },
 
   mixins: [PermissionsMixin],
@@ -28,7 +29,7 @@ const AuthenticationPage = React.createClass({
         <PageHeader title="Authentication Management">
           <span>Configure Graylog's authentication providers and manage the active users of this Graylog cluster.</span>
           <span>Read more authentication in the <DocumentationLink page={DocsHelper.PAGES.USERS_ROLES}
-                                                                   text="documentation"/>.</span>
+                                                                   text="documentation" />.</span>
         </PageHeader>
 
         <Row className="content">

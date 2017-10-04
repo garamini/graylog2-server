@@ -1,4 +1,5 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { ButtonGroup, Button, Row, Col, DropdownButton, MenuItem, Label } from 'react-bootstrap';
 import Immutable from 'immutable';
 import { LinkContainer } from 'react-router-bootstrap';
@@ -48,7 +49,7 @@ const MessageDetail = React.createClass({
         return;
       }
       const promise = StreamsStore.listStreams();
-      promise.done((streams) => this._onStreamsLoaded(streams));
+      promise.done(streams => this._onStreamsLoaded(streams));
     }
   },
   _onStreamsLoaded(streams) {
@@ -82,9 +83,8 @@ const MessageDetail = React.createClass({
   _getAllStreams() {
     if (this.props.allStreams) {
       return this.props.allStreams;
-    } else {
-      return this.state.allStreams;
     }
+    return this.state.allStreams;
   },
 
   _getTestAgainstStreamButton() {
@@ -97,12 +97,19 @@ const MessageDetail = React.createClass({
       if (!streamList) {
         streamList = [];
       }
-      streamList.push(
-        <LinkContainer key={stream.id}
-                       to={Routes.stream_edit_example(stream.id, this.props.message.index, this.props.message.id)}>
-          <MenuItem>{stream.title}</MenuItem>
-        </LinkContainer>
-      );
+      if (stream.is_default) {
+        streamList.push(
+          <MenuItem key={stream.id} disabled title="Cannot test against the default stream">{stream.title}</MenuItem>,
+        );
+      } else {
+        streamList.push(
+          <LinkContainer key={stream.id}
+                         to={Routes.stream_edit_example(stream.id, this.props.message.index,
+                                                        this.props.message.id)}>
+            <MenuItem>{stream.title}</MenuItem>
+          </LinkContainer>,
+        );
+      }
     });
 
     return (
@@ -118,7 +125,7 @@ const MessageDetail = React.createClass({
 
   _formatMessageActions() {
     if (this.props.disableMessageActions) {
-      return <ButtonGroup className="pull-right" bsSize="small"/>;
+      return <ButtonGroup className="pull-right" bsSize="small" />;
     }
 
     const messageUrl = this.props.message.index ? Routes.message_show(this.props.message.index, this.props.message.id) : '#';

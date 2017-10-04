@@ -23,14 +23,17 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import org.graylog2.indexer.IndexSet;
 import org.graylog2.plugin.streams.Stream;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnit;
+import org.mockito.junit.MockitoRule;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -50,8 +53,10 @@ import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
 public class MessageTest {
+    @Rule
+    public final MockitoRule mockitoRule = MockitoJUnit.rule();
+
     private Message message;
     private DateTime originalTimestamp;
     private MetricRegistry metricRegistry;
@@ -248,10 +253,42 @@ public class MessageTest {
     }
 
     @Test
+    public void testStreamMutatorsWithIndexSets() {
+        final Stream stream1 = mock(Stream.class);
+        final Stream stream2 = mock(Stream.class);
+        final Stream stream3 = mock(Stream.class);
+
+        final IndexSet indexSet1 = mock(IndexSet.class);
+        final IndexSet indexSet2 = mock(IndexSet.class);
+
+        assertThat(message.getIndexSets()).isEmpty();
+
+        when(stream1.getIndexSet()).thenReturn(indexSet1);
+        when(stream2.getIndexSet()).thenReturn(indexSet1);
+        when(stream3.getIndexSet()).thenReturn(indexSet2);
+
+        message.addStream(stream1);
+        message.addStreams(Sets.newHashSet(stream2, stream3));
+
+        assertThat(message.getIndexSets()).containsOnly(indexSet1, indexSet2);
+
+        message.removeStream(stream3);
+
+        assertThat(message.getIndexSets()).containsOnly(indexSet1);
+
+        final Set<IndexSet> indexSets = message.getIndexSets();
+
+        message.addStream(stream3);
+
+        // getIndexSets is a copy and doesn't change after mutations
+        assertThat(indexSets).containsOnly(indexSet1);
+    }
+
+    @Test
     public void testGetStreamIds() throws Exception {
         message.addField("streams", Lists.newArrayList("stream-id"));
 
-        assertEquals(Lists.newArrayList("stream-id"), message.getStreamIds());
+        assertThat(message.getStreamIds()).containsOnly("stream-id");
     }
 
     @Test
@@ -329,6 +366,7 @@ public class MessageTest {
     public void testToElasticSearchObject() throws Exception {
         message.addField("field1", "wat");
         message.addField("field2", "that");
+        message.addField(Message.FIELD_STREAMS, Collections.singletonList("test-stream"));
 
         final Map<String, Object> object = message.toElasticSearchObject(invalidTimestampMeter);
 
@@ -337,7 +375,10 @@ public class MessageTest {
         assertEquals("wat", object.get("field1"));
         assertEquals("that", object.get("field2"));
         assertEquals(Tools.buildElasticSearchTimeFormat((DateTime) message.getField("timestamp")), object.get("timestamp"));
-        assertEquals(Collections.emptyList(), object.get("streams"));
+
+        @SuppressWarnings("unchecked")
+        final Collection<String> streams = (Collection<String>) object.get("streams");
+        assertThat(streams).containsOnly("test-stream");
     }
 
     @Test
@@ -353,7 +394,10 @@ public class MessageTest {
         assertEquals("foo", object.get("message"));
         assertEquals("bar", object.get("source"));
         assertEquals(Tools.buildElasticSearchTimeFormat((DateTime) message.getField("timestamp")), object.get("timestamp"));
-        assertEquals(Collections.emptyList(), object.get("streams"));
+
+        @SuppressWarnings("unchecked")
+        final Collection<String> streams = (Collection<String>) object.get("streams");
+        assertThat(streams).isEmpty();
     }
 
     @Test
@@ -370,14 +414,16 @@ public class MessageTest {
     @Test
     public void testToElasticSearchObjectWithStreams() throws Exception {
         final Stream stream = mock(Stream.class);
-
         when(stream.getId()).thenReturn("stream-id");
+        when(stream.getIndexSet()).thenReturn(mock(IndexSet.class));
 
-        message.setStreams(Lists.newArrayList(stream));
+        message.addStream(stream);
 
         final Map<String, Object> object = message.toElasticSearchObject(invalidTimestampMeter);
 
-        assertEquals(Lists.newArrayList("stream-id"), object.get("streams"));
+        @SuppressWarnings("unchecked")
+        final Collection<String> streams = (Collection<String>) object.get("streams");
+        assertThat(streams).containsOnly("stream-id");
     }
 
     @Test
@@ -480,10 +526,11 @@ public class MessageTest {
     public void getStreamIdsReturnsStreamsFieldContentsIfFieldDoesExist() {
         final Message message = new Message("", "source", Tools.nowUTC());
         final Stream stream = mock(Stream.class);
+        when(stream.getId()).thenReturn("test1");
         message.addField("streams", Collections.singletonList("test2"));
         message.addStream(stream);
 
-        assertThat(message.getStreamIds()).containsOnly("test2");
+        assertThat(message.getStreamIds()).containsOnly("test1", "test2");
 
     }
 }

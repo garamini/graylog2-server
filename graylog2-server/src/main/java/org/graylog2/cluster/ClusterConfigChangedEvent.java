@@ -20,11 +20,14 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.auto.value.AutoValue;
-import org.hibernate.validator.constraints.NotEmpty;
+import org.graylog.autovalue.WithBeanGetter;
 import org.joda.time.DateTime;
+
+import javax.validation.constraints.NotEmpty;
 
 @JsonAutoDetect
 @AutoValue
+@WithBeanGetter
 public abstract class ClusterConfigChangedEvent {
     @JsonProperty
     public abstract DateTime date();

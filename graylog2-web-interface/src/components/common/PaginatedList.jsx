@@ -1,14 +1,16 @@
+import PropTypes from 'prop-types';
 import React from 'react';
-import { Input, Pagination } from 'react-bootstrap';
+import { Pagination } from 'react-bootstrap';
+import { Input } from 'components/bootstrap';
 
 const PaginatedList = React.createClass({
   propTypes: {
-    children: React.PropTypes.node.isRequired,
-    onChange: React.PropTypes.func.isRequired,
-    pageSize: React.PropTypes.number,
-    pageSizes: React.PropTypes.arrayOf(React.PropTypes.number),
-    totalItems: React.PropTypes.number.isRequired,
-    showPageSizeSelect: React.PropTypes.bool,
+    children: PropTypes.node.isRequired,
+    onChange: PropTypes.func.isRequired,
+    pageSize: PropTypes.number,
+    pageSizes: PropTypes.arrayOf(PropTypes.number),
+    totalItems: PropTypes.number.isRequired,
+    showPageSizeSelect: PropTypes.bool,
   },
   getDefaultProps() {
     const defaultPageSizes = [10, 50, 100];
@@ -27,9 +29,9 @@ const PaginatedList = React.createClass({
     this.setState({ pageSize: pageSize });
     this.props.onChange(this.state.currentPage, pageSize);
   },
-  _onChangePage(event, selectedEvent) {
+  _onChangePage(eventKey, event) {
     event.preventDefault();
-    const pageNo = Number(selectedEvent.eventKey);
+    const pageNo = Number(eventKey);
     this.setState({ currentPage: pageNo });
     this.props.onChange(pageNo, this.state.pageSize);
   },
@@ -40,7 +42,7 @@ const PaginatedList = React.createClass({
     return (
       <div className="form-inline page-size" style={{ float: 'right' }}>
         <Input type="select" bsSize="small" label="Show:" value={this.state.pageSize} onChange={this._onChangePageSize}>
-          {this.props.pageSizes.map((size) => <option key={`option-${size}`} value={size}>{size}</option>)}
+          {this.props.pageSizes.map(size => <option key={`option-${size}`} value={size}>{size}</option>)}
         </Input>
       </div>
     );

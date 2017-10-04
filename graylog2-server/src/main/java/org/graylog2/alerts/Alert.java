@@ -20,24 +20,27 @@ import org.joda.time.DateTime;
 
 import java.util.Map;
 
-/**
- * @author Dennis Oelkers <dennis@torch.sh>
- */
 public interface Alert {
     String getId();
     String getStreamId();
     String getConditionId();
     DateTime getTriggeredAt();
+    DateTime getResolvedAt();
     String getDescription();
     Map<String, Object> getConditionParameters();
+    boolean isInterval();
 
-    interface Builder {
-        Builder streamId(String streamId);
-        Builder conditionId(String conditionId);
-        Builder triggeredAt(DateTime triggeredAt);
-        Builder description(String description);
-        Builder conditionParameters(Map<String, Object> conditionParameters);
+    enum AlertState {
+        ANY, RESOLVED, UNRESOLVED;
 
-        Alert build();
+        public static AlertState fromString(String state) {
+            for (AlertState aState : AlertState.values()) {
+                if (aState.toString().equalsIgnoreCase(state)) {
+                    return aState;
+                }
+            }
+
+            throw new IllegalArgumentException("Alert state " + state + " is not supported");
+        }
     }
 }

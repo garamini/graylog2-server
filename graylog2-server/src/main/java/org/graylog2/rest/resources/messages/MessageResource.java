@@ -26,8 +26,8 @@ import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import org.apache.shiro.authz.annotation.RequiresAuthentication;
 import org.apache.shiro.authz.annotation.RequiresPermissions;
-import org.elasticsearch.index.IndexNotFoundException;
 import org.graylog2.audit.jersey.NoAuditEvent;
+import org.graylog2.indexer.IndexSetRegistry;
 import org.graylog2.indexer.messages.DocumentNotFoundException;
 import org.graylog2.indexer.messages.Messages;
 import org.graylog2.indexer.results.ResultMessage;
@@ -42,11 +42,12 @@ import org.graylog2.rest.models.messages.requests.MessageParseRequest;
 import org.graylog2.rest.models.messages.responses.MessageTokens;
 import org.graylog2.shared.rest.resources.RestResource;
 import org.graylog2.shared.security.RestPermissions;
-import org.hibernate.validator.constraints.NotEmpty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
+import javax.validation.constraints.NotEmpty;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.ForbiddenException;
@@ -58,10 +59,12 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
+import static java.util.Objects.requireNonNull;
 
 @RequiresAuthentication
 @Api(value = "Messages", description = "Single messages")
@@ -70,13 +73,15 @@ import static com.google.common.base.Strings.isNullOrEmpty;
 public class MessageResource extends RestResource {
     private static final Logger LOG = LoggerFactory.getLogger(MessageResource.class);
 
-    private Messages messages;
-    private CodecFactory codecFactory;
+    private final Messages messages;
+    private final CodecFactory codecFactory;
+    private final IndexSetRegistry indexSetRegistry;
 
     @Inject
-    public MessageResource(Messages messages, CodecFactory codecFactory) {
-        this.messages = messages;
-        this.codecFactory = codecFactory;
+    public MessageResource(Messages messages, CodecFactory codecFactory, IndexSetRegistry indexSetRegistry) {
+        this.messages = requireNonNull(messages);
+        this.codecFactory = requireNonNull(codecFactory);
+        this.indexSetRegistry = requireNonNull(indexSetRegistry);
     }
 
     @GET
@@ -90,7 +95,7 @@ public class MessageResource extends RestResource {
     public ResultMessage search(@ApiParam(name = "index", value = "The index this message is stored in.", required = true)
                                 @PathParam("index") String index,
                                 @ApiParam(name = "messageId", required = true)
-                                @PathParam("messageId") String messageId) {
+                                @PathParam("messageId") String messageId) throws IOException {
         checkPermission(RestPermissions.MESSAGES_READ, messageId);
         try {
             final ResultMessage resultMessage = messages.get(messageId, index);
@@ -98,10 +103,6 @@ public class MessageResource extends RestResource {
             checkMessageReadPermission(message);
 
             return resultMessage;
-        } catch (IndexNotFoundException e) {
-            final String msg = "Index " + e.getIndex() + " does not exist.";
-            LOG.error(msg, e);
-            throw new NotFoundException(msg, e);
         } catch (DocumentNotFoundException e) {
             final String msg = "Message " + messageId + " does not exist in index " + index;
             LOG.error(msg, e);
@@ -159,10 +160,11 @@ public class MessageResource extends RestResource {
         try {
             message = codec.decode(rawMessage);
 
-            if (message == null) {
-                throw new BadRequestException("Could not decode message");
-            }
         } catch (Exception e) {
+            throw new BadRequestException("Could not decode message");
+        }
+
+        if (message == null) {
             throw new BadRequestException("Could not decode message");
         }
 
@@ -173,8 +175,9 @@ public class MessageResource extends RestResource {
         }
 
         // Override source
-        if (codec.getConfiguration() != null && codec.getConfiguration().stringIsSet(Codec.Config.CK_OVERRIDE_SOURCE)) {
-            message.setSource(codec.getConfiguration().getString(Codec.Config.CK_OVERRIDE_SOURCE));
+        final Configuration configuration = codec.getConfiguration();
+        if (configuration.stringIsSet(Codec.Config.CK_OVERRIDE_SOURCE)) {
+            message.setSource(configuration.getString(Codec.Config.CK_OVERRIDE_SOURCE));
         }
 
         return message;
@@ -192,14 +195,16 @@ public class MessageResource extends RestResource {
     public MessageTokens analyze(
             @ApiParam(name = "index", value = "The index the message containing the string is stored in.", required = true)
             @PathParam("index") String index,
+            @ApiParam(name = "analyzer", value = "The analyzer to use.")
+            @QueryParam("analyzer") @Nullable String analyzer,
             @ApiParam(name = "string", value = "The string to analyze.", required = true)
-            @QueryParam("string") @NotEmpty String string) {
-        try {
-            return MessageTokens.create(messages.analyze(string, index));
-        } catch (IndexNotFoundException e) {
-            final String message = "Index " + index + " does not exist.";
-            LOG.error(message, e);
-            throw new NotFoundException(message);
-        }
+            @QueryParam("string") @NotEmpty String string) throws IOException {
+
+        final String indexAnalyzer = indexSetRegistry.getForIndex(index)
+                .map(indexSet -> indexSet.getConfig().indexAnalyzer())
+                .orElse("standard");
+        final String messageAnalyzer = analyzer == null ? indexAnalyzer : analyzer;
+
+        return MessageTokens.create(messages.analyze(string, index, messageAnalyzer));
     }
 }

@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import Reflux from 'reflux';
 import jQuery from 'jquery';
@@ -17,9 +18,9 @@ import DecoratorStyles from '!style!css!components/search/decoratorStyles.css';
 
 const AddDecoratorButton = React.createClass({
   propTypes: {
-    nextOrder: React.PropTypes.number.isRequired,
-    stream: React.PropTypes.string,
-    disabled: React.PropTypes.bool,
+    nextOrder: PropTypes.number.isRequired,
+    stream: PropTypes.string,
+    disabled: PropTypes.bool,
   },
   mixins: [Reflux.connect(DecoratorsStore), PureRenderMixin],
   getDefaultProps() {
@@ -48,7 +49,7 @@ const AddDecoratorButton = React.createClass({
       order: this.props.nextOrder,
     };
     DecoratorsActions.create(request);
-    this.setState({typeName: this.PLACEHOLDER});
+    this.setState({ typeName: this.PLACEHOLDER });
   },
   _openModal() {
     this.refs.configurationForm.open();
@@ -67,17 +68,17 @@ const AddDecoratorButton = React.createClass({
     }
     const decoratorTypes = jQuery.map(this.state.types, this._formatDecoratorType);
     const configurationForm = (this.state.typeName !== this.PLACEHOLDER ?
-      <ConfigurationForm ref="configurationForm"
+      (<ConfigurationForm ref="configurationForm"
                          key="configuration-form-output" configFields={this.state.typeDefinition.requested_configuration}
                          title={`Create new ${this.state.typeDefinition.name}`}
                          typeName={this.state.typeName} includeTitleField={false}
-                         submitAction={this._handleSubmit} cancelAction={this._handleCancel} /> : null);
+                         submitAction={this._handleSubmit} cancelAction={this._handleCancel} />) : null);
     return (
       <div className={`${DecoratorStyles.decoratorBox} ${DecoratorStyles.addDecoratorButtonContainer}`}>
         <div className={DecoratorStyles.addDecoratorSelect}>
           <Select ref="select"
                   placeholder="Select decorator"
-                  onValueChange={this._onTypeChange}
+                  onChange={this._onTypeChange}
                   options={decoratorTypes}
                   matchProp="label"
                   disabled={this.props.disabled}

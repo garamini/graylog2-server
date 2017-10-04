@@ -23,7 +23,7 @@ import com.google.common.primitives.Ints;
 import com.google.inject.name.Named;
 import org.graylog2.indexer.IndexSetRegistry;
 import org.graylog2.indexer.cluster.Cluster;
-import org.graylog2.indexer.esplugin.IndicesDeletedEvent;
+import org.graylog2.indexer.indices.events.IndicesDeletedEvent;
 import org.graylog2.indexer.ranges.IndexRange;
 import org.graylog2.indexer.ranges.IndexRangeService;
 import org.graylog2.plugin.periodical.Periodical;
@@ -72,7 +72,7 @@ public class IndexRangesCleanupPeriodical extends Periodical {
             return;
         }
 
-        final Set<String> indexNames = ImmutableSet.copyOf(indexSetRegistry.getManagedIndicesNames());
+        final Set<String> indexNames = ImmutableSet.copyOf(indexSetRegistry.getManagedIndices());
         final SortedSet<IndexRange> indexRanges = indexRangeService.findAll();
 
         final Set<String> removedIndices = new HashSet<>();

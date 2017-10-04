@@ -2,7 +2,8 @@ import Reflux from 'reflux';
 
 import URLUtils from 'util/URLUtils';
 import ApiRoutes from 'routing/ApiRoutes';
-import fetch from 'logic/rest/FetchProvider';
+import fetch, { Builder, fetchPeriodically } from 'logic/rest/FetchProvider';
+import TimeHelper from 'util/TimeHelper';
 
 import StoreProvider from 'injection/StoreProvider';
 const SessionStore = StoreProvider.getStore('Session');
@@ -33,7 +34,7 @@ const MetricsStore = Reflux.createStore({
     let result = Promise.resolve(null);
 
     promises.forEach((promise) => {
-      result = result.then(() => promise).then((value) => accumulator.push(value), (error) => accumulator.push(error));
+      result = result.then(() => promise).then(value => accumulator.push(value), error => accumulator.push(error));
     });
 
     return result.then(() => accumulator);
@@ -43,10 +44,10 @@ const MetricsStore = Reflux.createStore({
 
     // First collect all node metric registrations
     Object.keys(localRegistrations)
-      .filter((nodeId) => Object.keys(localRegistrations[nodeId].length > 0))
+      .filter(nodeId => Object.keys(localRegistrations[nodeId].length > 0))
       .forEach((nodeId) => {
         Object.keys(localRegistrations[nodeId])
-          .filter((metricName) => localRegistrations[nodeId][metricName] > 0)
+          .filter(metricName => localRegistrations[nodeId][metricName] > 0)
           .forEach((metricName) => {
             metricsToFetch[metricName] = 1;
           });
@@ -54,7 +55,7 @@ const MetricsStore = Reflux.createStore({
 
     // Then collect all global metric registrations
     Object.keys(globalRegistrations)
-      .filter((metricName) => globalRegistrations[metricName] > 0)
+      .filter(metricName => globalRegistrations[metricName] > 0)
       .forEach((metricName) => {
         metricsToFetch[metricName] = 1;
       });
@@ -87,11 +88,13 @@ const MetricsStore = Reflux.createStore({
     const url = URLUtils.qualifyUrl(ApiRoutes.ClusterMetricsApiController.multipleAllNodes().url);
 
     if (!this.promises.list) {
-      const promise = fetch('POST', url, { metrics: Object.keys(metricsToFetch) }).finally(() => delete this.promises.list);
+      const promise = fetchPeriodically('POST', url, { metrics: Object.keys(metricsToFetch) })
+        .finally(() => delete this.promises.list);
 
       promise.then((response) => {
         this.metrics = this._buildMetricsFromResponse(response);
-        this.trigger({ metrics: this.metrics });
+        // The metricsUpdatedAt value is used by components to decide if they should be re-rendered
+        this.trigger({ metrics: this.metrics, metricsUpdatedAt: TimeHelper.nowInSeconds() });
         return this.metrics;
       });
       this.promises.list = promise;

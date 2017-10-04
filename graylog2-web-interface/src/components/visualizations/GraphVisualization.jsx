@@ -1,12 +1,12 @@
-import React, {PropTypes} from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import ReactDOM from 'react-dom';
 import numeral from 'numeral';
 import crossfilter from 'crossfilter';
 import dc from 'dc';
 import d3 from 'd3';
-// eslint-disable-next-line no-unused-vars
-import jQuery from 'jquery';
 import deepEqual from 'deep-equal';
+import _ from 'lodash';
 
 import DateTime from 'logic/datetimes/DateTime';
 import HistogramFormatter from 'logic/graphs/HistogramFormatter';
@@ -16,8 +16,9 @@ import NumberUtils from 'util/NumberUtils';
 
 import graphHelper from 'legacy/graphHelper';
 
-require('!script!../../../public/javascripts/jquery-2.1.1.min.js');
-require('!script!../../../public/javascripts/bootstrap.min.js');
+import $ from 'jquery';
+global.jQuery = $;
+require('bootstrap/js/tooltip');
 
 const GraphFactory = {
   create(config, domNode, tooltipTitleFormatter) {
@@ -39,11 +40,11 @@ const GraphFactory = {
         break;
       case 'scatterplot':
         graph = dc.lineChart(domNode);
-        graph.renderDataPoints({radius: 2, fillOpacity: 1, strokeOpacity: 1});
+        graph.renderDataPoints({ radius: 2, fillOpacity: 1, strokeOpacity: 1 });
         D3Utils.tooltipRenderlet(graph, '.chart-body circle.dot', tooltipTitleFormatter);
         break;
       default:
-        throw new Error("Unsupported renderer '" + config.renderer + "'");
+        throw new Error(`Unsupported renderer '${config.renderer}'`);
     }
 
     if (config.renderer === 'line' || config.renderer === 'area') {
@@ -64,7 +65,10 @@ const GraphVisualization = React.createClass({
     id: PropTypes.string.isRequired,
     data: PropTypes.object.isRequired,
     config: PropTypes.object.isRequired,
-    computationTimeRange: PropTypes.object,
+    computationTimeRange: PropTypes.shape({
+      from: PropTypes.string.isRequired,
+      to: PropTypes.string.isRequired,
+    }).isRequired,
     height: PropTypes.number,
     width: PropTypes.number,
   },
@@ -83,8 +87,8 @@ const GraphVisualization = React.createClass({
   getInitialState() {
     this.triggerRender = true;
     this.graphData = crossfilter();
-    this.dimension = this.graphData.dimension((d) => d.x);
-    this.group = this.dimension.group().reduceSum((d) => d.y);
+    this.dimension = this.graphData.dimension(d => d.x);
+    this.group = this.dimension.group().reduceSum(d => d.y);
 
     return {
       dataPoints: [],
@@ -92,7 +96,10 @@ const GraphVisualization = React.createClass({
   },
   componentDidMount() {
     this.renderGraph();
-    this._updateData(this.props.data, this.props.config);
+    this._updateData(this.props.data, this.props.config, this.props.computationTimeRange);
+  },
+  componentDidUpdate() {
+    this.drawData();
   },
   componentWillReceiveProps(nextProps) {
     if (deepEqual(this.props, nextProps)) {
@@ -102,14 +109,14 @@ const GraphVisualization = React.createClass({
     if (nextProps.height !== this.props.height || nextProps.width !== this.props.width) {
       this._resizeVisualization(nextProps.width, nextProps.height);
     }
-    this._updateData(nextProps.data, nextProps.config);
+    this._updateData(nextProps.data, nextProps.config, nextProps.computationTimeRange);
   },
-  _updateData(data, config) {
+  _updateData(data, config, computationTimeRange) {
     const isSearchAll = (config.timerange.type === 'relative' && config.timerange.range === 0);
-    const dataPoints = HistogramFormatter.format(data, this.props.computationTimeRange,
+    const dataPoints = HistogramFormatter.format(data, computationTimeRange,
       config.interval, this.props.width, isSearchAll, config.valuetype);
 
-    this.setState({dataPoints: this._normalizeData(dataPoints)}, this.drawData);
+    this.setState({ dataPoints: this._normalizeData(dataPoints) });
   },
   _normalizeData(data) {
     if (data === null || data === undefined || !Array.isArray(data)) {
@@ -154,6 +161,87 @@ const GraphVisualization = React.createClass({
     } else {
       this.graph.redraw();
     }
+    if (this.props.config.threshold) {
+      this.renderThreshold();
+    }
+  },
+  // Draws a horizontal threshold line in the graph
+  renderThreshold() {
+    const threshold = this.props.config.threshold;
+    const thresholdColor = this.props.config.threshold_color || '#f00';
+    const thresholdTooltip = this.props.config.threshold_tooltip || `threshold: ${threshold}`;
+    const thresholdDotHidden = 1e-6;
+    const thresholdDotVisible = 0.8;
+    const thresholdDotRadius = 4;
+
+    this.graph.on('renderlet.threshold', (chart) => {
+      const lineData = [
+        {
+          x: chart.x().range()[0],
+          y: chart.y()(threshold),
+        },
+        {
+          x: chart.x().range()[1],
+          y: chart.y()(threshold),
+        },
+      ];
+
+      const line = d3.svg.line()
+        .x(d => d.x)
+        .y(d => d.y)
+        .interpolate('linear');
+
+      const chartBody = chart.select('g.chart-body');
+      const paths = chartBody.selectAll('path.threshold').data([lineData]);
+      paths // Modify the existing path
+        .attr('stroke', thresholdColor)
+        .attr('d', line);
+      paths.enter() // This will only do something if there isn't a path yet
+        .append('path')
+        .attr('class', 'threshold')
+        .attr('stroke', thresholdColor)
+        .attr('stroke-width', 1)
+        .attr('stroke-dasharray', ('2', '2'))
+        .attr('d', line);
+      paths.exit().remove(); // Remove any outdated paths
+
+      // Collect all x-axis values
+      const xValues = chart.data().reduce((list, value) => {
+        value.values.forEach(v => list.push(v.x));
+        return list;
+      }, []);
+
+      // Put circles on the threshold line to make it easier to show the tooltip
+      const dots = chartBody.selectAll('circle.threshold').data(xValues);
+      dots.enter()
+        .append('circle')
+        .attr('class', 'threshold')
+        .attr('r', thresholdDotRadius)
+        .attr('rel', 'tooltip') // To make the tooltip helper pick it up
+        .attr('data-original-title', () => {
+          return `<div class="datapoint-info">${_.escape(thresholdTooltip)}</div>`;
+        })
+        .style('stroke-opacity', thresholdDotHidden)
+        .style('fill-opacity', thresholdDotHidden)
+        .on('mousemove', function show() {
+          d3.select(this)
+            .style('stroke-opacity', thresholdDotVisible)
+            .style('fill-opacity', thresholdDotVisible);
+        })
+        .on('mouseout', function hide() {
+          d3.select(this)
+            .style('stroke-opacity', thresholdDotHidden)
+            .style('fill-opacity', thresholdDotHidden);
+        });
+      dots
+        .attr('cx', d => dc.utils.safeNumber(chart.x()(d)))
+        .attr('cy', () => dc.utils.safeNumber(chart.y()(threshold)))
+        .attr('data-original-title', () => {
+          return `<div class="datapoint-info">${thresholdTooltip}</div>`;
+        })
+        .attr('fill', thresholdColor);
+      dots.exit().remove();
+    });
   },
   renderGraph() {
     const graphDomNode = ReactDOM.findDOMNode(this);
@@ -162,7 +250,7 @@ const GraphVisualization = React.createClass({
     this.graph
       .width(this.props.width)
       .height(this.props.height)
-      .margins({left: 50, right: 15, top: 10, bottom: 35})
+      .margins({ left: 50, right: 15, top: 10, bottom: 35 })
       .dimension(this.dimension)
       .group(this.group)
       .x(d3.time.scale())
@@ -176,11 +264,11 @@ const GraphVisualization = React.createClass({
       .colors(D3Utils.glColourPalette());
 
     $(graphDomNode).tooltip({
-      'selector': '[rel="tooltip"]',
-      'container': 'body',
-      'placement': 'auto',
-      'delay': {show: 300, hide: 100},
-      'html': true,
+      selector: '[rel="tooltip"]',
+      container: 'body',
+      placement: 'auto',
+      delay: { show: 300, hide: 100 },
+      html: true,
     });
 
     this.graph.xAxis()
@@ -195,7 +283,7 @@ const GraphVisualization = React.createClass({
   },
   render() {
     return (
-      <div id={`visualization-${this.props.id}`} className={`graph ${this.props.config.renderer}`}/>
+      <div id={`visualization-${this.props.id}`} className={`graph ${this.props.config.renderer}`} />
     );
   },
 });

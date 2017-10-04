@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import moment from 'moment';
 import jQuery from 'jquery';
@@ -6,7 +7,7 @@ import Select from 'components/common/Select';
 
 const TimezoneSelect = React.createClass({
   propTypes: {
-    onChange: React.PropTypes.func,
+    onChange: PropTypes.func,
   },
 
   getValue() {
@@ -38,7 +39,7 @@ const TimezoneSelect = React.createClass({
           .map((location) => {
             const timezone = (area === this._UNCLASSIFIED_AREA ? location : `${area}/${location}`);
             return { value: timezone, label: location.replace('_', ' ') };
-          })
+          }),
         );
     }));
   },

@@ -1,4 +1,5 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import Reflux from 'reflux';
 import { Tab, Tabs, Col } from 'react-bootstrap';
 import Immutable from 'immutable';
@@ -17,9 +18,9 @@ import RecentMessageLoader from './RecentMessageLoader';
 
 const LoaderTabs = React.createClass({
   propTypes: {
-    tabs: React.PropTypes.oneOfType([
-      React.PropTypes.oneOf(['recent', 'messageId', 'raw']),
-      React.PropTypes.arrayOf(React.PropTypes.oneOf(['recent', 'messageId', 'raw'])),
+    tabs: PropTypes.oneOfType([
+      PropTypes.oneOf(['recent', 'messageId', 'raw']),
+      PropTypes.arrayOf(PropTypes.oneOf(['recent', 'messageId', 'raw'])),
     ]),
     messageId: PropTypes.string,
     index: PropTypes.string,
@@ -117,7 +118,7 @@ const LoaderTabs = React.createClass({
           <RecentMessageLoader inputs={this.state.inputs}
                                selectedInputId={this.props.selectedInputId}
                                onMessageLoaded={this.onMessageLoaded} />
-        </Tab>
+        </Tab>,
       );
     }
 
@@ -129,7 +130,7 @@ const LoaderTabs = React.createClass({
           </div>
 
           <MessageLoader ref="messageLoader" onMessageLoaded={this.onMessageLoaded} hidden={false} hideText />
-        </Tab>
+        </Tab>,
       );
     }
 
@@ -141,7 +142,7 @@ const LoaderTabs = React.createClass({
           </div>
 
           <RawMessageLoader onMessageLoaded={this.onMessageLoaded} />
-        </Tab>
+        </Tab>,
       );
     }
 
@@ -165,7 +166,7 @@ const LoaderTabs = React.createClass({
 
     return (
       <div>
-        <Tabs activeKey={this._getActiveTab()} onSelect={this._changeActiveTab} animation={false}>
+        <Tabs id="loaderTabs" activeKey={this._getActiveTab()} onSelect={this._changeActiveTab} animation={false}>
           {this._formatMessageLoaders()}
         </Tabs>
         {displayMessage}

@@ -41,10 +41,10 @@ import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Spy;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnit;
+import org.mockito.junit.MockitoRule;
 
 import java.util.Collections;
 import java.util.Map;
@@ -53,7 +53,6 @@ import static com.lordofthejars.nosqlunit.mongodb.InMemoryMongoDb.InMemoryMongoR
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
 public class ClusterConfigServiceImplTest {
     @ClassRule
     public static final InMemoryMongoDb IN_MEMORY_MONGO_DB = newInMemoryMongoDbRule().build();
@@ -62,6 +61,9 @@ public class ClusterConfigServiceImplTest {
 
     @Rule
     public MongoConnectionRule mongoRule = MongoConnectionRule.build("test");
+    @Rule
+    public final MockitoRule mockitoRule = MockitoJUnit.rule();
+
     private final ObjectMapper objectMapper = new ObjectMapperProvider().get();
 
     @Mock
@@ -84,7 +86,6 @@ public class ClusterConfigServiceImplTest {
                 provider,
                 mongoRule.getMongoConnection(),
                 nodeId,
-                objectMapper,
                 new ChainingClassLoader(getClass().getClassLoader()),
                 clusterEventBus
         );
@@ -93,6 +94,7 @@ public class ClusterConfigServiceImplTest {
     @After
     public void tearDown() {
         DateTimeUtils.setCurrentMillisSystem();
+        mongoConnection.getMongoDatabase().drop();
     }
 
     @Test

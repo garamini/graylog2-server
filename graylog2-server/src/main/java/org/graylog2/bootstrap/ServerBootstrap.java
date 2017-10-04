@@ -16,12 +16,12 @@
  */
 package org.graylog2.bootstrap;
 
+import com.github.rvesse.airline.annotations.Option;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.ServiceManager;
 import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.google.inject.ProvisionException;
-import io.airlift.airline.Option;
 import org.graylog2.audit.AuditActor;
 import org.graylog2.audit.AuditEventSender;
 import org.graylog2.plugin.BaseConfiguration;
@@ -56,6 +56,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static com.google.common.base.Strings.isNullOrEmpty;
 import static org.graylog2.audit.AuditEventTypes.NODE_STARTUP_COMPLETE;
 import static org.graylog2.audit.AuditEventTypes.NODE_STARTUP_INITIATE;
 
@@ -97,9 +98,10 @@ public abstract class ServerBootstrap extends CmdLineTool {
     protected void startCommand() {
         final AuditEventSender auditEventSender = injector.getInstance(AuditEventSender.class);
         final NodeId nodeId = injector.getInstance(NodeId.class);
+        final String systemInformation = Tools.getSystemInformation();
         final Map<String, Object> auditEventContext = ImmutableMap.of(
             "version", version.toString(),
-            "java", Tools.getSystemInformation(),
+            "java", systemInformation,
             "node_id", nodeId.toString()
         );
         auditEventSender.success(AuditActor.system(nodeId), NODE_STARTUP_INITIATE, auditEventContext);
@@ -107,7 +109,7 @@ public abstract class ServerBootstrap extends CmdLineTool {
         final OS os = OS.getOs();
 
         LOG.info("Graylog {} {} starting up", commandName, version);
-        LOG.info("JRE: {}", Tools.getSystemInformation());
+        LOG.info("JRE: {}", systemInformation);
         LOG.info("Deployment: {}", configuration.getInstallationSource());
         LOG.info("OS: {}", os.getPlatformName());
         LOG.info("Arch: {}", os.getArch());
@@ -175,7 +177,7 @@ public abstract class ServerBootstrap extends CmdLineTool {
         pidFilePath.toFile().deleteOnExit();
 
         try {
-            if (pid == null || pid.isEmpty() || pid.equals("unknown")) {
+            if (isNullOrEmpty(pid) || "unknown".equals(pid)) {
                 throw new Exception("Could not determine PID.");
             }
 

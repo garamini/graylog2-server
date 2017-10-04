@@ -1,20 +1,28 @@
 import $ from 'jquery';
+import PropTypes from 'prop-types';
 import React from 'react';
 
 import BootstrapModalForm from 'components/bootstrap/BootstrapModalForm';
-import { BooleanField, DropdownField, NumberField, TextField, TitleField } from 'components/configurationforms';
+import {
+  BooleanField,
+  DropdownField,
+  ListField,
+  NumberField,
+  TextField,
+  TitleField,
+} from 'components/configurationforms';
 
 const ConfigurationForm = React.createClass({
   propTypes: {
-    cancelAction: React.PropTypes.func,
-    children: React.PropTypes.node,
-    helpBlock: React.PropTypes.node,
-    includeTitleField: React.PropTypes.bool,
-    submitAction: React.PropTypes.func.isRequired,
-    title: React.PropTypes.node,
-    titleValue: React.PropTypes.string,
-    typeName: React.PropTypes.string,
-    values: React.PropTypes.object,
+    cancelAction: PropTypes.func,
+    children: PropTypes.node,
+    helpBlock: PropTypes.node,
+    includeTitleField: PropTypes.bool,
+    submitAction: PropTypes.func.isRequired,
+    title: PropTypes.node,
+    titleValue: PropTypes.string,
+    typeName: PropTypes.string,
+    values: PropTypes.object,
   },
 
   getDefaultProps() {
@@ -54,7 +62,7 @@ const ConfigurationForm = React.createClass({
     const defaultValues = {};
 
     if (props.configFields) {
-      Object.keys(props.configFields).forEach(field => {
+      Object.keys(props.configFields).forEach((field) => {
         defaultValues[field] = props.configFields[field].default_value;
       });
     }
@@ -108,7 +116,10 @@ const ConfigurationForm = React.createClass({
                               value={value} onChange={this._handleChange} autoFocus={autoFocus} />);
       case 'dropdown':
         return (<DropdownField key={elementKey} typeName={typeName} title={key} field={configField}
-                               value={value} onChange={this._handleChange} autoFocus={autoFocus} addPlaceholder/>);
+                               value={value} onChange={this._handleChange} autoFocus={autoFocus} addPlaceholder />);
+      case 'list':
+        return (<ListField key={elementKey} typeName={typeName} title={key} field={configField}
+                           value={value} onChange={this._handleChange} autoFocus={autoFocus} addPlaceholder />);
       default:
         return null;
     }

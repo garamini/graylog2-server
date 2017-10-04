@@ -17,15 +17,16 @@
 package org.graylog2.alerts.types;
 
 import org.graylog2.alerts.AlertConditionTest;
-import org.graylog2.indexer.InvalidRangeFormatException;
 import org.graylog2.indexer.results.CountResult;
 import org.graylog2.plugin.Tools;
 import org.graylog2.plugin.alarms.AlertCondition;
 import org.graylog2.plugin.indexer.searches.timeranges.TimeRange;
 import org.junit.Test;
 
+import java.util.Locale;
 import java.util.Map;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyString;
@@ -43,6 +44,23 @@ public class MessageCountAlertConditionTest extends AlertConditionTest {
 
         assertNotNull(messageCountAlertCondition);
         assertNotNull(messageCountAlertCondition.getDescription());
+        final String thresholdType = (String) messageCountAlertCondition.getParameters().get("threshold_type");
+        assertEquals(thresholdType, thresholdType.toUpperCase(Locale.ENGLISH));
+    }
+
+    /*
+     * Ensure MessageCountAlertCondition objects created before 2.2.0 and having a lowercase threshold_type,
+     * get converted to uppercase for consistency with new created alert conditions.
+     */
+    @Test
+    public void testConstructorOldObjects() throws Exception {
+        final Map<String, Object> parameters = getParametersMap(0, 0, MessageCountAlertCondition.ThresholdType.MORE, 0);
+        parameters.put("threshold_type", MessageCountAlertCondition.ThresholdType.MORE.toString().toLowerCase(Locale.ENGLISH));
+
+        final MessageCountAlertCondition messageCountAlertCondition = getMessageCountAlertCondition(parameters, alertConditionTitle);
+
+        final String thresholdType = (String) messageCountAlertCondition.getParameters().get("threshold_type");
+        assertEquals(thresholdType, thresholdType.toUpperCase(Locale.ENGLISH));
     }
 
     @Test
@@ -110,11 +128,7 @@ public class MessageCountAlertConditionTest extends AlertConditionTest {
         final CountResult countResult = mock(CountResult.class);
         when(countResult.count()).thenReturn(count);
 
-        try {
-            when(searches.count(anyString(), any(TimeRange.class), anyString())).thenReturn(countResult);
-        } catch (InvalidRangeFormatException e) {
-            assertNotNull("This should not return an exception!", e);
-        }
+        when(searches.count(anyString(), any(TimeRange.class), anyString())).thenReturn(countResult);
     }
 
     private MessageCountAlertCondition getMessageCountAlertCondition(Map<String, Object> parameters, String title) {

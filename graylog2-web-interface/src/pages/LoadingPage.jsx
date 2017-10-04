@@ -1,14 +1,15 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Col, Row } from 'react-bootstrap';
 
-import { Spinner } from 'components/common';
+import { DocumentTitle, Spinner } from 'components/common';
 
 import disconnectedStyle from '!style/useable!css!less!stylesheets/disconnected.less';
 import authStyle from '!style/useable!css!less!stylesheets/auth.less';
 
 const LoadingPage = React.createClass({
   propTypes: {
-    text: React.PropTypes.string,
+    text: PropTypes.string,
   },
 
   getDefaultProps() {
@@ -29,16 +30,18 @@ const LoadingPage = React.createClass({
 
   render() {
     return (
-      <div className="container" id="login-box">
-        <Row>
-          <Col md={4} mdOffset={4} className="well" id="login-box-content">
-            <legend><i className="fa fa-group"/> Welcome to Graylog</legend>
-            <p className="loading-text">
-              <Spinner text={this.props.text}/>
-            </p>
-          </Col>
-        </Row>
-      </div>
+      <DocumentTitle title="Loading...">
+        <div className="container" id="login-box">
+          <Row>
+            <Col md={4} mdOffset={4} className="well" id="login-box-content">
+              <legend><i className="fa fa-group" /> Welcome to Graylog</legend>
+              <p className="loading-text">
+                <Spinner text={this.props.text} />
+              </p>
+            </Col>
+          </Row>
+        </div>
+      </DocumentTitle>
     );
   },
 });

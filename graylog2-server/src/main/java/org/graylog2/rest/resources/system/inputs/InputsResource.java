@@ -104,7 +104,8 @@ public class InputsResource extends RestResource {
     @ApiOperation(value = "Get all inputs")
     public InputsList list() {
         final Set<InputSummary> inputs = inputService.all().stream()
-                .map(input -> getInputSummary(input))
+                .filter(input -> isPermitted(RestPermissions.INPUTS_READ, input.getId()))
+                .map(this::getInputSummary)
                 .collect(Collectors.toSet());
 
         return InputsList.create(inputs);
@@ -186,7 +187,7 @@ public class InputsResource extends RestResource {
         mergedInput.putAll(messageInput.asMap());
 
         final Input newInput = inputService.create(input.getId(), mergedInput);
-        inputService.save(newInput);
+        inputService.update(newInput);
 
         final URI inputUri = getUriBuilderToSelf().path(InputsResource.class)
                 .path("{inputId}")

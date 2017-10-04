@@ -61,18 +61,17 @@ public class ClusterConfigServiceImpl implements ClusterConfigService {
     public ClusterConfigServiceImpl(final MongoJackObjectMapperProvider mapperProvider,
                                     final MongoConnection mongoConnection,
                                     final NodeId nodeId,
-                                    final ObjectMapper objectMapper,
                                     final ChainingClassLoader chainingClassLoader,
                                     final ClusterEventBus clusterEventBus) {
         this(JacksonDBCollection.wrap(prepareCollection(mongoConnection), ClusterConfig.class, String.class, mapperProvider.get()),
-                nodeId, objectMapper, chainingClassLoader, clusterEventBus);
+                nodeId, mapperProvider.get(), chainingClassLoader, clusterEventBus);
     }
 
-    ClusterConfigServiceImpl(final JacksonDBCollection<ClusterConfig, String> dbCollection,
-                             final NodeId nodeId,
-                             final ObjectMapper objectMapper,
-                             final ChainingClassLoader chainingClassLoader,
-                             final EventBus clusterEventBus) {
+    private ClusterConfigServiceImpl(final JacksonDBCollection<ClusterConfig, String> dbCollection,
+                                     final NodeId nodeId,
+                                     final ObjectMapper objectMapper,
+                                     final ChainingClassLoader chainingClassLoader,
+                                     final EventBus clusterEventBus) {
         this.nodeId = checkNotNull(nodeId);
         this.dbCollection = checkNotNull(dbCollection);
         this.objectMapper = checkNotNull(objectMapper);

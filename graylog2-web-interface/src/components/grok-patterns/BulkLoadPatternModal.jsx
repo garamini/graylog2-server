@@ -1,6 +1,8 @@
+import PropTypes from 'prop-types';
 import React from 'react';
-import { Input, Button } from 'react-bootstrap';
+import { Button } from 'react-bootstrap';
 
+import { Input } from 'components/bootstrap';
 import UserNotification from 'util/UserNotification';
 
 import StoreProvider from 'injection/StoreProvider';
@@ -10,7 +12,7 @@ import BootstrapModalForm from 'components/bootstrap/BootstrapModalForm';
 
 const BulkLoadPatternModal = React.createClass({
   propTypes: {
-    onSuccess: React.PropTypes.func.isRequired,
+    onSuccess: PropTypes.func.isRequired,
   },
   getInitialState() {
     return {
@@ -24,14 +26,7 @@ const BulkLoadPatternModal = React.createClass({
     const reader = new FileReader();
 
     reader.onload = (loaded) => {
-      const request = loaded.target.result.split('\n').map((line) => {
-        if (!line.startsWith('#')) {
-          const splitted = line.match(/^(\w+)\s+(.*)$/)
-          if (splitted != null && splitted.length === 3) {
-            return {name: splitted[1], pattern: splitted[2]};
-          }
-        }
-      }).filter((elem) => elem !== undefined);
+      const request = loaded.target.result;
       GrokPatternsStore.bulkImport(request, this.state.replacePatterns).then(() => {
         UserNotification.success('Grok Patterns imported successfully', 'Success!');
         this.refs.modal.close();
@@ -44,24 +39,24 @@ const BulkLoadPatternModal = React.createClass({
   render() {
     return (
       <span>
-        <Button bsStyle="info" style={{marginRight: 5}} onClick={() => this.refs.modal.open()}>Import pattern file</Button>
+        <Button bsStyle="info" style={{ marginRight: 5 }} onClick={() => this.refs.modal.open()}>Import pattern file</Button>
 
-          <BootstrapModalForm ref="modal"
+        <BootstrapModalForm ref="modal"
                               title="Import Grok patterns from file"
                               submitButtonText="Upload"
-                              formProps={{onSubmit: this._onSubmit}}>
-            <Input type="file"
+                              formProps={{ onSubmit: this._onSubmit }}>
+          <Input type="file"
                    ref="pattern-file"
                    name="patterns"
                    label="Pattern file"
                    help="A file containing Grok patterns, one per line. Name and patterns should be separated by whitespace."
                    required />
-            <Input type="checkbox"
+          <Input type="checkbox"
                    name="replace"
                    label="Replace all existing patterns?"
-                   onChange={(e) => this.setState({ replacePatterns: e.target.checked })}
+                   onChange={e => this.setState({ replacePatterns: e.target.checked })}
             />
-          </BootstrapModalForm>
+        </BootstrapModalForm>
       </span>
     );
   },

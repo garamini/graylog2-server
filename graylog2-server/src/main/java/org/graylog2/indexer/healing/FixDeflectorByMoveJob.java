@@ -68,6 +68,12 @@ public class FixDeflectorByMoveJob extends SystemJob {
     }
 
     public void doExecute(IndexSet indexSet) {
+        if (!indexSet.getConfig().isWritable()) {
+            LOG.debug("No need to fix deflector for non-writable index set <{}> ({})", indexSet.getConfig().id(),
+                    indexSet.getConfig().title());
+            return;
+        }
+
         if (indexSet.isUp() || !indices.exists(indexSet.getWriteIndexAlias())) {
             LOG.error("There is no index <{}>. No need to run this job. Aborting.", indexSet.getWriteIndexAlias());
             return;
@@ -88,7 +94,7 @@ public class FixDeflectorByMoveJob extends SystemJob {
             // Copy messages to new index.
             String newTarget = null;
             try {
-                newTarget = indexSet.getNewestTargetName();
+                newTarget = indexSet.getNewestIndex();
 
                 LOG.info("Starting to move <{}> to <{}>.", indexSet.getWriteIndexAlias(), newTarget);
                 indices.move(indexSet.getWriteIndexAlias(), newTarget);
@@ -114,15 +120,10 @@ public class FixDeflectorByMoveJob extends SystemJob {
             progress = 95;
         } finally {
             // Start message processing again.
-            try {
-                serverStatus.unlockProcessingPause();
+            serverStatus.unlockProcessingPause();
 
-                if (wasProcessing) {
-                    serverStatus.resumeMessageProcessing();
-                }
-            } catch (Exception e) {
-                // lol checked exceptions
-                throw new RuntimeException("Could not unlock processing pause.", e);
+            if (wasProcessing) {
+                serverStatus.resumeMessageProcessing();
             }
         }
 

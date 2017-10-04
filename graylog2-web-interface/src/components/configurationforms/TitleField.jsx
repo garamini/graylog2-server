@@ -1,17 +1,18 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 
 import { TextField } from 'components/configurationforms';
 
 const TitleField = React.createClass({
   propTypes: {
-    helpBlock: React.PropTypes.node,
-    onChange: React.PropTypes.func,
-    typeName: React.PropTypes.string.isRequired,
-    value: React.PropTypes.any,
+    helpBlock: PropTypes.node,
+    onChange: PropTypes.func,
+    typeName: PropTypes.string.isRequired,
+    value: PropTypes.any,
   },
   getDefaultProps() {
     return {
-      helpBlock: <span/>,
+      helpBlock: <span />,
       onChange: () => {},
     };
   },

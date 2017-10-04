@@ -18,6 +18,9 @@ package org.graylog2.indexer;
 
 import org.graylog2.indexer.indices.TooManyAliasesException;
 
+import java.util.Collection;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 public interface IndexSetRegistry extends Iterable<IndexSet> {
@@ -26,41 +29,72 @@ public interface IndexSetRegistry extends Iterable<IndexSet> {
      *
      * @return list of index sets
      */
-    Set<IndexSet> getAllIndexSets();
+    Set<IndexSet> getAll();
 
     /**
-     * Returns a list with the names of all managed indices.
+     * Returns the {@link IndexSet} for the given ID.
      *
-     * @return list with names of managed indices
+     * @param indexSetId ID of the index set
+     * @return index set
      */
-    String[] getManagedIndicesNames();
+    Optional<IndexSet> get(String indexSetId);
 
     /**
-     * Checks if the given index name is managed by Graylog.
+     * Returns the {@link IndexSet} for the given index.
      *
-     * @param indexName the index name to check
-     * @return true when index is managed by Graylog, false otherwise
+     * @param index name of the index
+     * @return index set that manages the given index
      */
-    boolean isManagedIndex(String indexName);
+    Optional<IndexSet> getForIndex(String index);
 
     /**
-     * Returns the list of all write index wildcards.
+     * Returns the {@link IndexSet} that is marked as default.
+     *
+     * Throws an {@link IllegalStateException} if the default index set does not exist.
+     *
+     * @return the default index set
+     */
+    IndexSet getDefault();
+
+    /**
+     * Returns a list of all managed indices.
+     *
+     * @return list of managed indices
+     */
+    String[] getManagedIndices();
+
+    /**
+     * Checks if the given index is managed by any index set.
+     *
+     * @param index the index name to check
+     * @return true when index is managed by any index set, false otherwise
+     */
+    boolean isManagedIndex(String index);
+
+    /**
+     * Checks if the given indices are managed by any index set.
+     *
+     * @param indices the index names to check
+     * @return true when index is managed by any index set, false otherwise
+     */
+    Map<String, Boolean> isManagedIndex(Collection<String> indices);
+
+    /**
+     * Returns the list of all index wildcards.
      *
      * @return list of wildcards
      */
-    String[] getWriteIndexWildcards();
+    String[] getIndexWildcards();
 
     /**
-     * Returns the list of all write index names.
+     * Returns the list of all write index aliases.
      *
      * @return list of names
      */
-    String[] getWriteIndexNames();
+    String[] getWriteIndexAliases();
 
     /**
      * Checks if all deflector aliases exist.
-     *
-     * TODO 2.2: Check if we can get rid of this method or create a good implementation.
      *
      * @return if all aliases exist
      */
@@ -75,11 +109,11 @@ public interface IndexSetRegistry extends Iterable<IndexSet> {
     boolean isCurrentWriteIndexAlias(String indexName);
 
     /**
-     * Checks if the given index name is a current write index in any {@link IndexSet}.
+     * Checks if the given index is a current write index in any {@link IndexSet}.
      *
-     * @param indexName the index name to check
+     * @param index the index name to check
      * @return true when index is a current write index, false otherwise
      * @throws TooManyAliasesException
      */
-    boolean isCurrentWriteIndex(String indexName) throws TooManyAliasesException;
+    boolean isCurrentWriteIndex(String index) throws TooManyAliasesException;
 }

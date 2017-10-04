@@ -1,4 +1,5 @@
-import React, {PropTypes} from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import ReactDOM from 'react-dom';
 import numeral from 'numeral';
 import crossfilter from 'crossfilter';
@@ -13,8 +14,9 @@ import D3Utils from 'util/D3Utils';
 
 import graphHelper from 'legacy/graphHelper';
 
-require('!script!../../../public/javascripts/jquery-2.1.1.min.js');
-require('!script!../../../public/javascripts/bootstrap.min.js');
+import $ from 'jquery';
+global.jQuery = $;
+require('bootstrap/js/tooltip');
 
 const HistogramVisualization = React.createClass({
   propTypes: {
@@ -28,8 +30,8 @@ const HistogramVisualization = React.createClass({
   getInitialState() {
     this.triggerRender = true;
     this.histogramData = crossfilter();
-    this.dimension = this.histogramData.dimension((d) => d.x);
-    this.group = this.dimension.group().reduceSum((d) => d.y);
+    this.dimension = this.histogramData.dimension(d => d.x);
+    this.group = this.dimension.group().reduceSum(d => d.y);
 
     return {
       dataPoints: [],
@@ -50,7 +52,7 @@ const HistogramVisualization = React.createClass({
     this._updateData(nextProps.data);
   },
   _updateData(data) {
-    this.setState({dataPoints: data}, this.drawData);
+    this.setState({ dataPoints: data }, this.drawData);
   },
   _resizeVisualization(width, height) {
     this.histogram
@@ -78,12 +80,14 @@ const HistogramVisualization = React.createClass({
   },
   renderHistogram() {
     const histogramDomNode = ReactDOM.findDOMNode(this);
+    const xAxisLabel = this.props.config.xAxis || 'Time';
+    const yAxisLabel = this.props.config.yAxis || 'Messages';
 
     this.histogram = dc.barChart(histogramDomNode);
     this.histogram
       .width(this.props.width)
       .height(this.props.height)
-      .margins({left: 50, right: 15, top: 10, bottom: 30})
+      .margins({ left: 50, right: 15, top: 10, bottom: 30 })
       .dimension(this.dimension)
       .group(this.group)
       .x(d3.time.scale())
@@ -92,8 +96,8 @@ const HistogramVisualization = React.createClass({
       .centerBar(true)
       .renderHorizontalGridLines(true)
       .brushOn(false)
-      .xAxisLabel('Time')
-      .yAxisLabel('Messages')
+      .xAxisLabel(xAxisLabel)
+      .yAxisLabel(yAxisLabel)
       .renderTitle(false)
       .colors(D3Utils.glColourPalette())
       .on('renderlet', () => {
@@ -110,11 +114,11 @@ const HistogramVisualization = React.createClass({
       });
 
     $(histogramDomNode).tooltip({
-      'selector': '[rel="tooltip"]',
-      'container': 'body',
-      'placement': 'auto',
-      'delay': {show: 300, hide: 100},
-      'html': true,
+      selector: '[rel="tooltip"]',
+      container: 'body',
+      placement: 'auto',
+      delay: { show: 300, hide: 100 },
+      html: true,
     });
 
     this.histogram.xAxis()
@@ -129,7 +133,7 @@ const HistogramVisualization = React.createClass({
   },
   render() {
     return (
-      <div id={`visualization-${this.props.id}`} className="histogram"/>
+      <div id={`visualization-${this.props.id}`} className="histogram" />
     );
   },
 });

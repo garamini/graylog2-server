@@ -84,7 +84,6 @@ import java.util.SortedMap;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -238,9 +237,9 @@ public class KafkaJournal extends AbstractIdleService implements Journal {
                         "MD5");
 
         if (!journalDirectory.exists() && !journalDirectory.mkdirs()) {
-            LOG.error("Cannot create journal directory at {}, please check the permissions",
-                    journalDirectory.getAbsolutePath());
-            Throwables.propagate(new AccessDeniedException(journalDirectory.getAbsolutePath(), null, "Could not create journal directory."));
+            LOG.error("Cannot create journal directory at {}, please check the permissions", journalDirectory.getAbsolutePath());
+            final AccessDeniedException accessDeniedException = new AccessDeniedException(journalDirectory.getAbsolutePath(), null, "Could not create journal directory.");
+            throw new RuntimeException(accessDeniedException);
         }
 
         // TODO add check for directory, etc
@@ -257,9 +256,8 @@ public class KafkaJournal extends AbstractIdleService implements Journal {
             }
         } catch (IOException e) {
             LOG.error("Cannot access offset file: {}", e.getMessage());
-            Throwables.propagate(new AccessDeniedException(committedReadOffsetFile.getAbsolutePath(),
-                    null,
-                    e.getMessage()));
+            final AccessDeniedException accessDeniedException = new AccessDeniedException(committedReadOffsetFile.getAbsolutePath(), null, e.getMessage());
+            throw new RuntimeException(accessDeniedException);
         }
         try {
             final BrokerState brokerState = new BrokerState();
@@ -318,7 +316,7 @@ public class KafkaJournal extends AbstractIdleService implements Journal {
     private Timer registerHdrTimer(MetricRegistry metricRegistry, final String metricName) {
         Timer timer;
         try {
-            timer = metricRegistry.register(metricName, new HdrTimer(1, TimeUnit.MINUTES, 1));
+            timer = metricRegistry.register(metricName, new HdrTimer(1, MINUTES, 1));
         } catch (IllegalArgumentException e) {
             final SortedMap<String, Timer> timers = metricRegistry.getTimers((name, metric) -> metricName.equals(name));
             timer = Iterables.getOnlyElement(timers.values());

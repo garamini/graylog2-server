@@ -23,6 +23,7 @@ import com.google.common.collect.Lists;
 import org.graylog2.plugin.MessageSummary;
 import org.graylog2.plugin.Tools;
 import org.graylog2.plugin.alarms.AlertCondition;
+import org.graylog2.plugin.configuration.fields.BooleanField;
 import org.graylog2.plugin.configuration.fields.ConfigurationField;
 import org.graylog2.plugin.configuration.fields.NumberField;
 import org.graylog2.plugin.database.EmbeddedPersistable;
@@ -33,7 +34,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 public abstract class AbstractAlertCondition implements EmbeddedPersistable, AlertCondition {
@@ -57,9 +57,11 @@ public abstract class AbstractAlertCondition implements EmbeddedPersistable, Ale
     protected final DateTime createdAt;
     protected final String creatorUserId;
     protected final int grace;
+    protected final int backlog;
+    protected final boolean repeatNotifications;
     protected final String title;
 
-    private final Map<String, Object> parameters;
+    private Map<String, Object> parameters;
 
     protected AbstractAlertCondition(Stream stream, String id, String type, DateTime createdAt, String creatorUserId, Map<String, Object> parameters, String title) {
         this.title = title;
@@ -75,7 +77,9 @@ public abstract class AbstractAlertCondition implements EmbeddedPersistable, Ale
         this.creatorUserId = creatorUserId;
         this.parameters = ImmutableMap.copyOf(parameters);
 
-        this.grace = getNumber(this.parameters.get("grace")).orElse(0).intValue();
+        this.grace = Tools.getNumber(this.parameters.get("grace"), 0).intValue();
+        this.backlog = Tools.getNumber(this.parameters.get("backlog"), 0).intValue();
+        this.repeatNotifications = (boolean) this.parameters.getOrDefault("repeat_notifications", false);
     }
 
     @Override
@@ -83,6 +87,7 @@ public abstract class AbstractAlertCondition implements EmbeddedPersistable, Ale
         return id;
     }
 
+    @Override
     public String getType() {
         return type;
     }
@@ -108,6 +113,10 @@ public abstract class AbstractAlertCondition implements EmbeddedPersistable, Ale
         return stream;
     }
 
+    protected void setParameters(Map<String, Object> parameters) {
+        this.parameters = ImmutableMap.copyOf(parameters);
+    }
+
     @Override
     public Map<String, Object> getParameters() {
         return parameters;
@@ -115,7 +124,7 @@ public abstract class AbstractAlertCondition implements EmbeddedPersistable, Ale
 
     @Override
     public Integer getBacklog() {
-        return getNumber(getParameters().get("backlog")).orElse(0).intValue();
+        return backlog;
     }
 
     @Override
@@ -139,6 +148,11 @@ public abstract class AbstractAlertCondition implements EmbeddedPersistable, Ale
     @Override
     public int getGrace() {
         return grace;
+    }
+
+    @Override
+    public boolean shouldRepeatNotifications() {
+        return repeatNotifications;
     }
 
     public static class CheckResult implements AlertCondition.CheckResult {
@@ -195,22 +209,11 @@ public abstract class AbstractAlertCondition implements EmbeddedPersistable, Ale
         }
     }
 
-    protected Optional<Number> getNumber(Object o) {
-        if (o instanceof Number) {
-            return Optional.of((Number)o);
-        }
-
-        try {
-            return Optional.of(Double.valueOf(String.valueOf(o)));
-        } catch (NumberFormatException e) {
-            return Optional.empty();
-        }
-    }
-
     public static List<ConfigurationField> getDefaultConfigurationFields() {
         return Lists.newArrayList(
-            new NumberField("grace", "Grace Period", 0, "Time span in seconds defining how long alerting is paused after alert is triggered", ConfigurationField.Optional.NOT_OPTIONAL),
-            new NumberField("backlog", "Message Backlog", 0, "The number of messages to be included in alert notification", ConfigurationField.Optional.NOT_OPTIONAL)
+            new NumberField("grace", "Grace Period", 0, "Number of minutes to wait after an alert is resolved, to trigger another alert", ConfigurationField.Optional.NOT_OPTIONAL),
+            new NumberField("backlog", "Message Backlog", 0, "The number of messages to be included in alert notifications", ConfigurationField.Optional.NOT_OPTIONAL),
+            new BooleanField("repeat_notifications", "Repeat notifications", false, "Check this box to send notifications every time the alert condition is evaluated and satisfied regardless of its state.")
         );
     }
 }

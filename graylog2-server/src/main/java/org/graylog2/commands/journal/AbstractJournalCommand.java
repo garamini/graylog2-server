@@ -18,6 +18,7 @@ package org.graylog2.commands.journal;
 
 import com.google.inject.Module;
 import org.graylog2.Configuration;
+import org.graylog2.audit.AuditBindings;
 import org.graylog2.bindings.ConfigurationModule;
 import org.graylog2.bootstrap.CmdLineTool;
 import org.graylog2.plugin.KafkaJournalConfiguration;
@@ -28,8 +29,6 @@ import org.graylog2.shared.bindings.ServerStatusBindings;
 import org.graylog2.shared.journal.KafkaJournal;
 import org.graylog2.shared.journal.KafkaJournalModule;
 import org.graylog2.shared.plugins.ChainingClassLoader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -37,8 +36,6 @@ import java.util.List;
 import java.util.Set;
 
 public abstract class AbstractJournalCommand extends CmdLineTool {
-    protected static final Logger log = LoggerFactory.getLogger(AbstractJournalCommand.class);
-
     protected static final Configuration configuration = new Configuration();
     protected final KafkaJournalConfiguration kafkaJournalConfiguration = new KafkaJournalConfiguration();
     protected KafkaJournal journal;
@@ -55,7 +52,8 @@ public abstract class AbstractJournalCommand extends CmdLineTool {
         return Arrays.asList(new ConfigurationModule(configuration),
                              new ServerStatusBindings(capabilities()),
                              new SchedulerBindings(),
-                             new KafkaJournalModule());
+                             new KafkaJournalModule(),
+                             new AuditBindings());
     }
 
     @Override

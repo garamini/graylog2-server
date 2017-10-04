@@ -43,6 +43,8 @@ import java.nio.file.Path;
 @SuppressWarnings("FieldMayBeFinal")
 public abstract class BaseConfiguration {
     private static final Logger LOG = LoggerFactory.getLogger(BaseConfiguration.class);
+    protected static final String WILDCARD_IP_ADDRESS = "0.0.0.0";
+
     protected static final int GRAYLOG_DEFAULT_PORT = 9000;
     protected static final int GRAYLOG_DEFAULT_WEB_PORT = 9000;
 
@@ -72,9 +74,6 @@ public abstract class BaseConfiguration {
 
     @Parameter(value = "rest_enable_gzip")
     private boolean restEnableGzip = true;
-
-    @Parameter(value = "rest_max_initial_line_length", required = true, validator = PositiveIntegerValidator.class)
-    private int restMaxInitialLineLength = 4096;
 
     @Parameter(value = "rest_max_header_size", required = true, validator = PositiveIntegerValidator.class)
     private int restMaxHeaderSize = 8192;
@@ -145,9 +144,6 @@ public abstract class BaseConfiguration {
     @Parameter(value = "web_enable_gzip")
     private boolean webEnableGzip = true;
 
-    @Parameter(value = "web_max_initial_line_length", required = true, validator = PositiveIntegerValidator.class)
-    private int webMaxInitialLineLength = 4096;
-
     @Parameter(value = "web_max_header_size", required = true, validator = PositiveIntegerValidator.class)
     private int webMaxHeaderSize = 8192;
 
@@ -185,12 +181,13 @@ public abstract class BaseConfiguration {
     }
 
     public URI getRestTransportUri() {
+        final URI defaultRestTransportUri = getDefaultRestTransportUri();
         if (restTransportUri == null) {
-            LOG.debug("No rest_transport_uri set. Using default [{}].", getDefaultRestTransportUri());
-            return getDefaultRestTransportUri();
-        } else if ("0.0.0.0".equals(restTransportUri.getHost())) {
-            LOG.warn("\"{}\" is not a valid setting for \"rest_transport_uri\". Using default [{}].", restTransportUri, getDefaultRestTransportUri());
-            return getDefaultRestTransportUri();
+            LOG.debug("No rest_transport_uri set. Using default [{}].", defaultRestTransportUri);
+            return defaultRestTransportUri;
+        } else if (WILDCARD_IP_ADDRESS.equals(restTransportUri.getHost())) {
+            LOG.warn("\"{}\" is not a valid setting for \"rest_transport_uri\". Using default [{}].", restTransportUri, defaultRestTransportUri);
+            return defaultRestTransportUri;
         } else {
             return Tools.normalizeURI(restTransportUri, restTransportUri.getScheme(), GRAYLOG_DEFAULT_PORT, "/");
         }
@@ -205,7 +202,7 @@ public abstract class BaseConfiguration {
         final URI transportUri;
         final URI listenUri = getRestListenUri();
 
-        if ("0.0.0.0".equals(listenUri.getHost())) {
+        if (WILDCARD_IP_ADDRESS.equals(listenUri.getHost())) {
             final InetAddress guessedAddress;
             try {
                 guessedAddress = Tools.guessPrimaryNetworkAddress();
@@ -281,10 +278,6 @@ public abstract class BaseConfiguration {
 
     public boolean isRestEnableGzip() {
         return restEnableGzip;
-    }
-
-    public int getRestMaxInitialLineLength() {
-        return restMaxInitialLineLength;
     }
 
     public int getRestMaxHeaderSize() {
@@ -401,10 +394,6 @@ public abstract class BaseConfiguration {
         return webEnableGzip;
     }
 
-    public int getWebMaxInitialLineLength() {
-        return webMaxInitialLineLength;
-    }
-
     public int getWebMaxHeaderSize() {
         return webMaxHeaderSize;
     }
@@ -462,7 +451,7 @@ public abstract class BaseConfiguration {
     @ValidatorMethod
     @SuppressWarnings("unused")
     public void validateWebTlsConfig() throws ValidationException {
-        if(isWebEnableTls()) {
+        if(isWebEnableTls() && !isRestAndWebOnSamePort()) {
             if(!isRegularFileAndReadable(getWebTlsKeyFile())) {
                 throw new ValidationException("Unreadable or missing web interface private key: " + getWebTlsKeyFile());
             }
@@ -476,10 +465,8 @@ public abstract class BaseConfiguration {
     @ValidatorMethod
     @SuppressWarnings("unused")
     public void validateRestAndWebListenConfigConflict() throws ValidationException {
-        if (isRestAndWebOnSamePort()) {
-            if (getRestListenUri().getPath().equals(getWebListenUri().getPath())) {
-                throw new ValidationException("If REST and Web interface are served on the same host/port, the path must be different!");
-            }
+        if (isRestAndWebOnSamePort() && getRestListenUri().getPath().equals(getWebListenUri().getPath())) {
+            throw new ValidationException("If REST and Web interface are served on the same host/port, the path must be different!");
         }
     }
 

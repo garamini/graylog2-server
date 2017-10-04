@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Row, Col } from 'react-bootstrap';
 import Routes from 'routing/Routes';
@@ -8,14 +9,13 @@ import StoreProvider from 'injection/StoreProvider';
 const RolesStore = StoreProvider.getStore('Roles');
 const UsersStore = StoreProvider.getStore('Users');
 
-import Spinner from 'components/common/Spinner';
-import PageHeader from 'components/common/PageHeader';
+import { DocumentTitle, PageHeader, Spinner } from 'components/common';
 import NewUserForm from 'components/users/NewUserForm';
 
 const CreateUsersPage = React.createClass({
 
   propTypes: {
-    history: React.PropTypes.object,
+    history: PropTypes.object,
   },
 
   getInitialState() {
@@ -25,7 +25,7 @@ const CreateUsersPage = React.createClass({
   },
 
   componentDidMount() {
-    RolesStore.loadRoles().then(roles => {
+    RolesStore.loadRoles().then((roles) => {
       this.setState({ roles: roles });
     });
   },
@@ -51,19 +51,21 @@ const CreateUsersPage = React.createClass({
       return <Spinner />;
     }
     return (
-      <span>
-        <PageHeader title="Create new user" subpage>
-          <span>
-            Use this page to create new Graylog users. The users and their permissions created here are not limited
-            to the web interface but valid and required for the REST APIs of your Graylog server nodes, too.
-          </span>
-        </PageHeader>
-        <Row>
-          <Col lg={8}>
-            <NewUserForm roles={this.state.roles} onSubmit={this._onSubmit} onCancel={this._onCancel}/>
-          </Col>
-        </Row>
-      </span>
+      <DocumentTitle title="Create new user">
+        <span>
+          <PageHeader title="Create new user" subpage>
+            <span>
+              Use this page to create new Graylog users. The users and their permissions created here are not limited
+              to the web interface but valid and required for the REST APIs of your Graylog server nodes, too.
+            </span>
+          </PageHeader>
+          <Row>
+            <Col lg={8}>
+              <NewUserForm roles={this.state.roles} onSubmit={this._onSubmit} onCancel={this._onCancel} />
+            </Col>
+          </Row>
+        </span>
+      </DocumentTitle>
     );
   },
 });

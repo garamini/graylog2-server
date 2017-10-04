@@ -46,12 +46,12 @@ import org.graylog2.rest.models.system.loggers.responses.SingleSubsystemSummary;
 import org.graylog2.rest.models.system.loggers.responses.SubsystemSummary;
 import org.graylog2.shared.rest.resources.RestResource;
 import org.graylog2.shared.security.RestPermissions;
-import org.hibernate.validator.constraints.NotEmpty;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.Min;
+import javax.validation.constraints.NotEmpty;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.InternalServerErrorException;
@@ -240,7 +240,7 @@ public class LoggersResource extends RestResource {
             if (thrownProxy == null) {
                 throwable = null;
             } else {
-                throwable = thrownProxy.getExtendedStackTraceAsString();
+                throwable = thrownProxy.getExtendedStackTraceAsString("");
             }
 
             final Marker marker = event.getMarker();
@@ -252,7 +252,7 @@ public class LoggersResource extends RestResource {
                     new DateTime(event.getTimeMillis(), DateTimeZone.UTC),
                     throwable,
                     event.getThreadName(),
-                    event.getContextMap()
+                    event.getContextData().toMap()
             ));
         }
 

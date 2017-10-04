@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 
 import { ConfigurationWell } from 'components/configurationforms';
@@ -6,13 +7,13 @@ import BacklogSummary from 'components/alertconditions/BacklogSummary';
 
 const GenericAlertConditionSummary = React.createClass({
   propTypes: {
-    alertCondition: React.PropTypes.object.isRequired,
+    alertCondition: PropTypes.object.isRequired,
   },
 
   render() {
     const alertCondition = this.props.alertCondition;
     const graceSummary = alertCondition.parameters.grace ? <GracePeriodSummary alertCondition={alertCondition} /> : null;
-    const backlogSummary = alertCondition.parameters.backlog ? <BacklogSummary alertCondition={alertCondition}/> : null;
+    const backlogSummary = alertCondition.parameters.backlog ? <BacklogSummary alertCondition={alertCondition} /> : null;
     return (
       <span>
         {graceSummary}

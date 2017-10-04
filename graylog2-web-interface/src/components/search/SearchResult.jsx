@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import Immutable from 'immutable';
 import { Col, Row } from 'react-bootstrap';
@@ -13,18 +14,19 @@ import {} from 'components/field-analyzers'; // Make sure to load all field anal
 
 const SearchResult = React.createClass({
   propTypes: {
-    query: React.PropTypes.string,
-    builtQuery: React.PropTypes.string,
-    result: React.PropTypes.object.isRequired,
-    histogram: React.PropTypes.object.isRequired,
-    formattedHistogram: React.PropTypes.array,
-    searchInStream: React.PropTypes.object,
-    streams: React.PropTypes.instanceOf(Immutable.Map),
-    inputs: React.PropTypes.instanceOf(Immutable.Map),
-    nodes: React.PropTypes.instanceOf(Immutable.Map),
-    permissions: React.PropTypes.array.isRequired,
-    searchConfig: React.PropTypes.object.isRequired,
-    loadingSearch: React.PropTypes.bool,
+    query: PropTypes.string,
+    builtQuery: PropTypes.string,
+    result: PropTypes.object.isRequired,
+    histogram: PropTypes.object.isRequired,
+    formattedHistogram: PropTypes.array,
+    searchInStream: PropTypes.object,
+    streams: PropTypes.instanceOf(Immutable.Map),
+    inputs: PropTypes.instanceOf(Immutable.Map),
+    nodes: PropTypes.instanceOf(Immutable.Map),
+    permissions: PropTypes.array.isRequired,
+    searchConfig: PropTypes.object.isRequired,
+    loadingSearch: PropTypes.bool,
+    forceFetch: PropTypes.bool,
   },
 
   getDefaultProps() {
@@ -40,12 +42,16 @@ const SearchResult = React.createClass({
   },
 
   getInitialState() {
-    const initialFields = SearchStore.fields;
     return {
-      selectedFields: this.sortFields(initialFields),
+      selectedFields: this.sortFields(SearchStore.fields),
       showAllFields: false,
       shouldHighlight: true,
+      savedSearch: SearchStore.savedSearch,
     };
+  },
+
+  componentDidUpdate() {
+    this._resetSelectedFields();
   },
 
   onFieldToggled(fieldName) {
@@ -57,6 +63,16 @@ const SearchResult = React.createClass({
       newFieldSet = currentFields.add(fieldName);
     }
     this.updateSelectedFields(newFieldSet);
+  },
+
+  // Reset selected fields if saved search changed
+  _resetSelectedFields() {
+    if (this.state.savedSearch !== SearchStore.savedSearch) {
+      this.setState({
+        savedSearch: SearchStore.savedSearch,
+        selectedFields: this.sortFields(SearchStore.fields),
+      });
+    }
   },
 
   togglePageFields() {
@@ -107,7 +123,7 @@ const SearchResult = React.createClass({
     // Get params used in the last executed search.
     const searchParams = SearchStore.getOriginalSearchURLParams().toJS();
     const rangeParams = {};
-    ['relative', 'from', 'to', 'keyword'].forEach(param => {
+    ['relative', 'from', 'to', 'keyword'].forEach((param) => {
       if (searchParams[param]) {
         rangeParams[param] = searchParams[param];
       }
@@ -127,6 +143,7 @@ const SearchResult = React.createClass({
           resolution: this.props.histogram.interval,
           from: this.props.histogram.histogram_boundaries.from,
           to: this.props.histogram.histogram_boundaries.to,
+          forceFetch: this.props.forceFetch,
         });
       });
   },
@@ -146,17 +163,20 @@ const SearchResult = React.createClass({
   render() {
     const anyHighlightRanges = Immutable.fromJS(this.props.result.messages).some(message => message.get('highlight_ranges') !== null);
 
-    // short circuit if the result turned up empty
-    if (this.props.result.total_results === 0) {
-      return (
-        <NoSearchResults builtQuery={this.props.builtQuery} histogram={this.props.histogram}
-                         permissions={this.props.permissions} searchInStream={this.props.searchInStream} />
-      );
-    }
-
     let loadingIndicator;
     if (this.props.loadingSearch) {
       loadingIndicator = <LoadingIndicator text="Updating search results..." />;
+    }
+
+    // short circuit if the result turned up empty
+    if (this.props.result.total_results === 0) {
+      return (
+        <div>
+          <NoSearchResults builtQuery={this.props.builtQuery} histogram={this.props.histogram}
+                           permissions={this.props.permissions} searchInStream={this.props.searchInStream} />
+          {loadingIndicator}
+        </div>
+      );
     }
 
     return (
@@ -179,17 +199,18 @@ const SearchResult = React.createClass({
                          searchInStream={this.props.searchInStream}
                          permissions={this.props.permissions}
                          loadingSearch={this.props.loadingSearch}
+                         searchConfig={this.props.searchConfig}
           />
         </Col>
         <Col md={9} sm={12} id="main-content-sidebar">
-          {this._fieldAnalyzerComponents((analyzer) => this._shouldRenderAboveHistogram(analyzer))}
+          {this._fieldAnalyzerComponents(analyzer => this._shouldRenderAboveHistogram(analyzer))}
 
           <LegacyHistogram formattedHistogram={this.props.formattedHistogram}
                            histogram={this.props.histogram}
                            permissions={this.props.permissions}
                            stream={this.props.searchInStream} />
 
-          {this._fieldAnalyzerComponents((analyzer) => this._shouldRenderBelowHistogram(analyzer))}
+          {this._fieldAnalyzerComponents(analyzer => this._shouldRenderBelowHistogram(analyzer))}
 
           <ResultTable messages={this.props.result.messages}
                        page={SearchStore.page}
